@@ -1,0 +1,156 @@
+name: Build LnS Android APK (fixed signing key)
+"on":
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Extract app
+        run: |
+          unzip -q lightpia_equipment_v9_6_22_push_spark.zip -d /tmp/lightpia
+          cp -r /tmp/lightpia/lightpia_apk_project/www ./www
+          cp /tmp/lightpia/lightpia_apk_project/package.json ./package.json
+          cp /tmp/lightpia/lightpia_apk_project/capacitor.config.json ./capacitor.config.json
+      - name: Install dependencies
+        run: npm install
+      - name: Generate Android project
+        run: npx cap add android
+      - name: Apply branded launcher icons
+        run: |
+          python3 - <<'PYICONS'
+          import os, shutil
+          for density, size in [('mdpi',48),('hdpi',72),('xhdpi',96),('xxhdpi',144),('xxxhdpi',192)]:
+              target=f'android/app/src/main/res/mipmap-{density}'
+              os.makedirs(target,exist_ok=True)
+              for name in ('ic_launcher.png','ic_launcher_round.png','ic_launcher_foreground.png'):
+                  shutil.copyfile(f'www/icon-{size}.png',f'{target}/{name}')
+          PYICONS
+      - name: Sync Android
+        run: npx cap sync android
+      - name: Configure Firebase Android FCM
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$GOOGLE_SERVICES_JSON_B64" ]; then
+            echo 'Missing GOOGLE_SERVICES_JSON_B64 GitHub secret. Download google-services.json for Android app com.lightpia.equipment and base64-encode it.' >&2
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_SERVICES_JSON_B64" | base64 -d > android/app/google-services.json
+          python3 - <<'PYGRADLE'
+          from pathlib import Path
+          root=Path('android/build.gradle')
+          content=root.read_text()
+          if "com.google.gms:google-services" not in content:
+              content=content.replace('dependencies {', "dependencies {\n        classpath 'com.google.gms:google-services:4.4.2'",1)
+          root.write_text(content)
+          app=Path('android/app/build.gradle')
+          content=app.read_text()
+          if "com.google.gms.google-services" not in content:
+              content += "\napply plugin: 'com.google.gms.google-services'\n"
+          app.write_text(content)
+          PYGRADLE
+          python3 - <<'PYCHANNEL'
+          from pathlib import Path
+          p = Path('android/app/src/main/java/com/lightpia/equipment/MainActivity.java')
+          p.parent.mkdir(parents=True, exist_ok=True)
+          lines = [
+              'package com.lightpia.equipment;',
+              'import android.app.NotificationChannel;',
+              'import android.app.NotificationManager;',
+              'import android.os.Build;',
+              'import android.os.Bundle;',
+              'import com.getcapacitor.BridgeActivity;',
+              'public class MainActivity extends BridgeActivity {',
+              '  @Override public void onCreate(Bundle state) {',
+              '    super.onCreate(state);',
+              '    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {',
+              '      NotificationChannel channel = new NotificationChannel("reservation_alerts", "예약 알림", NotificationManager.IMPORTANCE_HIGH);',
+              '      getSystemService(NotificationManager.class).createNotificationChannel(channel);',
+              '    }',
+              '  }',
+              '}',
+          ]
+          p.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PYCHANNEL
+      - name: Restore and verify original V9.6.21 signing key
+        env:
+          LNS_DEBUG_KEYSTORE_B64: ${{ secrets.LNS_DEBUG_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$LNS_DEBUG_KEYSTORE_B64" ]; then
+            echo 'Missing LNS_DEBUG_KEYSTORE_B64' >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/.android"
+          printf '%s' "$LNS_DEBUG_KEYSTORE_B64" | base64 -d > "$HOME/.android/debug.keystore"
+          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey >/dev/null
+          ACTUAL_SHA256="$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | sed -n 's/^[[:space:]]*SHA256: //p' | head -1 | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+          EXPECTED_SHA256='5146208232E737B90EEDD0FAADE6836EABAEE31739B2D78595829D25825472F8'
+          if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
+            echo 'Signing key DOES NOT match installed V9.6.21 APK. Stopping to prevent incompatible APK.' >&2
+            echo "Key SHA256: $ACTUAL_SHA256" >&2
+            exit 1
+          fi
+          echo 'Original V9.6.21 signing certificate verified.'
+      - name: Force Gradle to sign with the verified original key
+        run: |
+          python3 - <<'PYSIGN'
+          from pathlib import Path
+          p = Path('android/app/build.gradle')
+          s = p.read_text()
+          s += """
+          android {
+              signingConfigs {
+                  debug {
+                      storeFile file(System.getProperty('user.home') + '/.android/debug.keystore')
+                      storePassword 'android'
+                      keyAlias 'androiddebugkey'
+                      keyPassword 'android'
+                  }
+              }
+              buildTypes {
+                  debug {
+                      signingConfig signingConfigs.debug
+                  }
+              }
+          }
+          """
+          p.write_text(s)
+          PYSIGN
+      - name: Set increasing Android version code
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          python3 - <<'PYVERSION'
+          import os,re,pathlib
+          p=pathlib.Path('android/app/build.gradle')
+          s=p.read_text()
+          v=100000+int(os.environ['RUN_NUMBER'])
+          s,n=re.subn(r'versionCode\s+\d+',f'versionCode {v}',s,count=1)
+          if n!=1: raise RuntimeError('Could not find versionCode')
+          p.write_text(s)
+          print('Android versionCode:',v)
+          PYVERSION
+      - name: Build updateable APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lightpia-softsun-updateable-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

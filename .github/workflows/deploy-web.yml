@@ -1,20 +1,26 @@
 name: Deploy Lightpia Web App
+
 on:
   workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-      - name: Extract V9.6.13 web app
+
+      - name: Extract V9.6.15 web app
         run: |
           set -euo pipefail
-          unzip -q lightpia_equipment_v9_6_13_member_groups.zip -d /tmp/lightpia-web
+          unzip -q lightpia_equipment_v9_6_15_calendar_korean_input.zip -d /tmp/lightpia-web
           cp -r /tmp/lightpia-web/lightpia_apk_project/www ./www
           test -s www/index.html
           test -s www/app.js
+
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:

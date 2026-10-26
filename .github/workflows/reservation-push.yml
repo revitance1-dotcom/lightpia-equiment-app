@@ -1,0 +1,40 @@
+name: Lightpia Reservation Push
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lightpia-reservation-push
+  cancel-in-progress: false
+
+jobs:
+  send-reservation-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Extract push sender
+        run: |
+          set -euo pipefail
+          unzip -p lightpia_equipment_v9_6_22_push_spark.zip lightpia_apk_project/push_sender/send.mjs > /tmp/lightpia-send.mjs
+          unzip -p lightpia_equipment_v9_6_22_push_spark.zip lightpia_apk_project/push_sender/package.json > /tmp/lightpia-package.json
+          mkdir -p push_sender
+          cp /tmp/lightpia-send.mjs push_sender/send.mjs
+          cp /tmp/lightpia-package.json push_sender/package.json
+      - name: Install sender dependencies
+        working-directory: push_sender
+        run: npm install --no-audit --no-fund
+      - name: Send reservation notifications
+        working-directory: push_sender
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LIGHT_4E07D }}
+        run: node send.mjs

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "668941084388",
+    "project_id": "light-4e07d",
+    "storage_bucket": "light-4e07d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:668941084388:android:82a65e3ac6bec330946ef1",
+        "android_client_info": {
+          "package_name": "com.lightpia.equipment"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTLInwXAX96DRMDZU8FvFlNgwEpiDtFls"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

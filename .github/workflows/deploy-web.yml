@@ -1,0 +1,24 @@
+name: Deploy Lightpia Web App
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract V9.6.13 web app
+        run: |
+          set -euo pipefail
+          unzip -q lightpia_equipment_v9_6_13_member_groups.zip -d /tmp/lightpia-web
+          cp -r /tmp/lightpia-web/lightpia_apk_project/www ./www
+          test -s www/index.html
+          test -s www/app.js
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LIGHT_4E07D }}
+          channelId: live
+          projectId: light-4e07d

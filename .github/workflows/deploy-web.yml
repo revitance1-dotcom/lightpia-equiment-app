@@ -1,4 +1,4 @@
-name: Deploy Lightpia Web App
+name: Deploy Lightpia Web App V9.6.21
 on:
   workflow_dispatch:
 permissions:
@@ -8,10 +8,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extract V9.6.14 web app
+      - name: Extract V9.6.21 web app
         run: |
           set -euo pipefail
-          unzip -q lightpia_equipment_v9_6_16_team_accordion.zip -d /tmp/lightpia-web
+          unzip -q lightpia_equipment_v9_6_21_bulk_delete_pc.zip -d /tmp/lightpia-web
+          rm -rf ./www
           cp -r /tmp/lightpia-web/lightpia_apk_project/www ./www
           test -s www/index.html
           test -s www/app.js

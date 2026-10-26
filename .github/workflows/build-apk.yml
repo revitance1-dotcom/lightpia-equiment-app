@@ -1,3 +1,35 @@
+name: Build LnS Android APK (fixed signing key)
+"on":
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Extract app
+        run: |
+          unzip -q lightpia_equipment_v9_6_22_push_spark.zip -d /tmp/lightpia
+          cp -r /tmp/lightpia/lightpia_apk_project/www ./www
+          cp /tmp/lightpia/lightpia_apk_project/package.json ./package.json
+          cp /tmp/lightpia/lightpia_apk_project/capacitor.config.json ./capacitor.config.json
+      - name: Install dependencies
+        run: npm install
+      - name: Generate Android project
+        run: npx cap add android
+      - name: Apply branded launcher icons
+        run: |
+          python3 - <<'PYICONS'
           import os, shutil
           for density, size in [('mdpi',48),('hdpi',72),('xhdpi',96),('xxhdpi',144),('xxxhdpi',192)]:
               target=f'android/app/src/main/res/mipmap-{density}'
@@ -94,31 +126,3 @@
                       signingConfig signingConfigs.debug
                   }
               }
-          }
-          """
-          p.write_text(s)
-          PYSIGN
-      - name: Set increasing Android version code
-        env:
-          RUN_NUMBER: ${{ github.run_number }}
-        run: |
-          python3 - <<'PYVERSION'
-          import os,re,pathlib
-          p=pathlib.Path('android/app/build.gradle')
-          s=p.read_text()
-          v=100000+int(os.environ['RUN_NUMBER'])
-          s,n=re.subn(r'versionCode\s+\d+',f'versionCode {v}',s,count=1)
-          if n!=1: raise RuntimeError('Could not find versionCode')
-          p.write_text(s)
-          print('Android versionCode:',v)
-          PYVERSION
-      - name: Build updateable APK
-        working-directory: android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug
-      - uses: actions/upload-artifact@v4
-        with:
-          name: lightpia-softsun-updateable-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error

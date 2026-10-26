@@ -25,8 +25,7 @@ jobs:
           java-version: '17'
 
       - name: Extract app project ZIP
-        run: |
-          test -f lightpia_equipment_android_github_build.zip
+       run: test -f lightpia_equipment_android_github_build_v2_lns_details.zip
           mkdir -p /tmp/lightpia-apk
           unzip -q lightpia_equipment_android_github_build.zip -d /tmp/lightpia-apk
           cp -R /tmp/lightpia-apk/lightpia_apk_project/www ./www

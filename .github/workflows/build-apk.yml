@@ -19,7 +19,7 @@ jobs:
           java-version: '17'
       - name: Extract app
         run: |
-          unzip -q lightpia_equipment_brand_v4.zip -d /tmp/lightpia
+          unzip -q lightpia_equipment_cinematic_v5.zip -d /tmp/lightpia
           cp -r /tmp/lightpia/lightpia_apk_project/www ./www
           cp /tmp/lightpia/lightpia_apk_project/package.json ./package.json
           cp /tmp/lightpia/lightpia_apk_project/capacitor.config.json ./capacitor.config.json
@@ -46,6 +46,6 @@ jobs:
           ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: lightpia-softsun-brand-apk
+          name: lightpia-softsun-cinematic-v5-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error

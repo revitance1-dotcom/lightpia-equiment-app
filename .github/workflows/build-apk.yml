@@ -19,7 +19,7 @@ jobs:
           java-version: '17'
       - name: Extract app
         run: |
-          unzip -q lightpia_equipment_v9_6_18_korean_ime_commit.zip -d /tmp/lightpia
+          unzip -q lightpia_equipment_v9_6_19_signup_ime_textarea.zip -d /tmp/lightpia
           cp -r /tmp/lightpia/lightpia_apk_project/www ./www
           cp /tmp/lightpia/lightpia_apk_project/package.json ./package.json
           cp /tmp/lightpia/lightpia_apk_project/capacitor.config.json ./capacitor.config.json

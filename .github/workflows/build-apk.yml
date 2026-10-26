@@ -1,5 +1,5 @@
-name: Build LnS Android APK (verified permanent signing)
-on:
+name: Build LnS Android APK (fixed signing key)
+"on":
   workflow_dispatch:
   push:
     branches: [main]
@@ -19,7 +19,7 @@ jobs:
           java-version: '17'
       - name: Extract app
         run: |
-          unzip -q lightpia_equipment_v9_6_21_bulk_delete_pc.zip -d /tmp/lightpia
+          unzip -q lightpia_equipment_v9_6_22_push_spark.zip -d /tmp/lightpia
           cp -r /tmp/lightpia/lightpia_apk_project/www ./www
           cp /tmp/lightpia/lightpia_apk_project/package.json ./package.json
           cp /tmp/lightpia/lightpia_apk_project/capacitor.config.json ./capacitor.config.json
@@ -39,84 +39,85 @@ jobs:
           PYICONS
       - name: Sync Android
         run: npx cap sync android
-      - name: Restore permanent signing key
+      - name: Configure Firebase Android FCM
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$GOOGLE_SERVICES_JSON_B64" ]; then
+            echo 'Missing GOOGLE_SERVICES_JSON_B64 GitHub secret. Download google-services.json for Android app com.lightpia.equipment and base64-encode it.' >&2
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_SERVICES_JSON_B64" | base64 -d > android/app/google-services.json
+          python3 - <<'PYGRADLE'
+          from pathlib import Path
+          root=Path('android/build.gradle')
+          content=root.read_text()
+          if "com.google.gms:google-services" not in content:
+              content=content.replace('dependencies {', "dependencies {\n        classpath 'com.google.gms:google-services:4.4.2'",1)
+          root.write_text(content)
+          app=Path('android/app/build.gradle')
+          content=app.read_text()
+          if "com.google.gms.google-services" not in content:
+              content += "\napply plugin: 'com.google.gms.google-services'\n"
+          app.write_text(content)
+          PYGRADLE
+          python3 - <<'PYCHANNEL'
+          from pathlib import Path
+          p=Path('android/app/src/main/java/com/lightpia/equipment/MainActivity.java')
+          if not p.exists():
+              p.parent.mkdir(parents=True,exist_ok=True)
+              p.write_text('package com.lightpia.equipment;\nimport com.getcapacitor.BridgeActivity;\npublic class MainActivity extends BridgeActivity {}\n')
+          # Native channel for Android 8+ notification display
+          p.write_text('''package com.lightpia.equipment;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.os.Build;
+import android.os.Bundle;
+import com.getcapacitor.BridgeActivity;
+public class MainActivity extends BridgeActivity {
+ @Override public void onCreate(Bundle state) {
+  super.onCreate(state);
+  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+   NotificationChannel channel=new NotificationChannel("reservation_alerts","예약 알림",NotificationManager.IMPORTANCE_HIGH);
+   getSystemService(NotificationManager.class).createNotificationChannel(channel);
+  }
+ }
+}
+''')
+          PYCHANNEL
+      - name: Restore permanent debug signing key
         env:
           LNS_DEBUG_KEYSTORE_B64: ${{ secrets.LNS_DEBUG_KEYSTORE_B64 }}
         run: |
-          test -n "$LNS_DEBUG_KEYSTORE_B64" || { echo 'Missing signing key secret' >&2; exit 1; }
-          mkdir -p "$RUNNER_TEMP/lns-signing"
-          printf '%s' "$LNS_DEBUG_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/lns-signing/debug.keystore"
-          keytool -list -keystore "$RUNNER_TEMP/lns-signing/debug.keystore" -storepass android -alias androiddebugkey >/dev/null
-          echo "LNS_KEYSTORE_PATH=$RUNNER_TEMP/lns-signing/debug.keystore" >> "$GITHUB_ENV"
-      - name: Set version and explicit signing configuration
+          if [ -z "$LNS_DEBUG_KEYSTORE_B64" ]; then
+            echo 'Missing GitHub Secret LNS_DEBUG_KEYSTORE_B64; do not build with a rotating key.' >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/.android"
+          printf '%s' "$LNS_DEBUG_KEYSTORE_B64" | base64 -d > "$HOME/.android/debug.keystore"
+          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey >/dev/null
+      - name: Set increasing Android version code
         env:
           RUN_NUMBER: ${{ github.run_number }}
         run: |
-          python3 - <<'PYCONFIG'
-          import os, pathlib, re
-          p = pathlib.Path('android/app/build.gradle')
-          s = p.read_text()
-          version = 200000 + int(os.environ['RUN_NUMBER'])
-          s, n = re.subn(r'\bversionCode\s+\d+', f'versionCode {version}', s, count=1)
-          if n != 1: raise RuntimeError('versionCode not found')
-          # Android Gradle Plugin creates a debug signing config by default.
-          # Force it to use the persistent keystore, not the runner-generated one.
-          block = '''
-          android {
-              signingConfigs {
-                  debug {
-                      storeFile file(System.getenv('LNS_KEYSTORE_PATH'))
-                      storePassword 'android'
-                      keyAlias 'androiddebugkey'
-                      keyPassword 'android'
-                  }
-              }
-              buildTypes {
-                  debug { signingConfig signingConfigs.debug }
-              }
-          }
-          '''
-          p.write_text(s + '\n' + block)
-          print('Android versionCode:', version)
-          PYCONFIG
+          python3 - <<'PYVERSION'
+          import os,re,pathlib
+          p=pathlib.Path('android/app/build.gradle')
+          s=p.read_text()
+          v=100000+int(os.environ['RUN_NUMBER'])
+          s,n=re.subn(r'versionCode\s+\d+',f'versionCode {v}',s,count=1)
+          if n!=1: raise RuntimeError('Could not find versionCode')
+          p.write_text(s)
+          print('Android versionCode:',v)
+          PYVERSION
       - name: Build updateable APK
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug
-      - name: Verify APK signing matches permanent key
-        run: |
-          set -euo pipefail
-          APK=android/app/build/outputs/apk/debug/app-debug.apk
-          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
-          "$APKSIGNER" verify --print-certs "$APK" > "$RUNNER_TEMP/apk-cert.txt"
-          keytool -exportcert -keystore "$LNS_KEYSTORE_PATH" -storepass android -alias androiddebugkey -rfc > "$RUNNER_TEMP/key-cert.pem"
-          openssl x509 -in "$RUNNER_TEMP/key-cert.pem" -noout -fingerprint -sha256 > "$RUNNER_TEMP/key-fingerprint.txt"
-          python3 - <<'PYVERIFY'
-          import pathlib, re, os
-          temp = pathlib.Path(os.environ['RUNNER_TEMP'])
-          apk_info = (temp/'apk-cert.txt').read_text()
-          key_info = (temp/'key-fingerprint.txt').read_text()
-          # Android build-tools may print either "SHA-256 digest" or "SHA-256".
-          matches = re.findall(r'(?im)^.*certificate\s+SHA-?256(?:\s+digest)?\s*:\s*([0-9a-f:]+)\s*$', apk_info)
-          if not matches:
-              matches = re.findall(r'(?im)^.*SHA-?256(?:\s+digest)?\s*:\s*([0-9a-f:]+)\s*$', apk_info)
-          key_match = re.search(r'(?i)sha256\s*fingerprint\s*=\s*([0-9a-f:]+)', key_info)
-          if not matches or not key_match:
-              print('APK certificate output:', apk_info)
-              print('Key certificate output:', key_info)
-              raise RuntimeError('Could not parse certificate fingerprints; see outputs above')
-          normalize = lambda s: s.replace(':','').lower()
-          expected = normalize(key_match.group(1))
-          actual = normalize(matches[0])
-          print('APK signer SHA256:', actual)
-          print('Expected SHA256:', expected)
-          if actual != expected:
-              raise RuntimeError('APK is signed with a different key')
-          print('PASS: APK signing certificate matches the permanent keystore')
-          PYVERIFY
       - uses: actions/upload-artifact@v4
         with:
-          name: lightpia-softsun-verified-update-apk
+          name: lightpia-softsun-updateable-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error

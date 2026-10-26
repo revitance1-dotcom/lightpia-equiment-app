@@ -64,27 +64,26 @@ jobs:
           PYGRADLE
           python3 - <<'PYCHANNEL'
           from pathlib import Path
-          p=Path('android/app/src/main/java/com/lightpia/equipment/MainActivity.java')
-          if not p.exists():
-              p.parent.mkdir(parents=True,exist_ok=True)
-              p.write_text('package com.lightpia.equipment;\nimport com.getcapacitor.BridgeActivity;\npublic class MainActivity extends BridgeActivity {}\n')
-          # Native channel for Android 8+ notification display
-                    p.write_text('''package com.lightpia.equipment;
-          import android.app.NotificationChannel;
-          import android.app.NotificationManager;
-          import android.os.Build;
-          import android.os.Bundle;
-          import com.getcapacitor.BridgeActivity;
-          public class MainActivity extends BridgeActivity {
-           @Override public void onCreate(Bundle state) {
-            super.onCreate(state);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-             NotificationChannel channel=new NotificationChannel("reservation_alerts","예약 알림",NotificationManager.IMPORTANCE_HIGH);
-             getSystemService(NotificationManager.class).createNotificationChannel(channel);
-            }
-           }
-          }
-          ''')
+          p = Path('android/app/src/main/java/com/lightpia/equipment/MainActivity.java')
+          p.parent.mkdir(parents=True, exist_ok=True)
+          lines = [
+              'package com.lightpia.equipment;',
+              'import android.app.NotificationChannel;',
+              'import android.app.NotificationManager;',
+              'import android.os.Build;',
+              'import android.os.Bundle;',
+              'import com.getcapacitor.BridgeActivity;',
+              'public class MainActivity extends BridgeActivity {',
+              '  @Override public void onCreate(Bundle state) {',
+              '    super.onCreate(state);',
+              '    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {',
+              '      NotificationChannel channel = new NotificationChannel("reservation_alerts", "예약 알림", NotificationManager.IMPORTANCE_HIGH);',
+              '      getSystemService(NotificationManager.class).createNotificationChannel(channel);',
+              '    }',
+              '  }',
+              '}',
+          ]
+          p.write_text('\n'.join(lines) + '\n', encoding='utf-8')
           PYCHANNEL
       - name: Restore permanent debug signing key
         env:

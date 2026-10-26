@@ -1,3 +1,35 @@
+name: Build LnS Android APK (verified permanent signing)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Extract app
+        run: |
+          unzip -q lightpia_equipment_v9_6_12_collapsible.zip -d /tmp/lightpia
+          cp -r /tmp/lightpia/lightpia_apk_project/www ./www
+          cp /tmp/lightpia/lightpia_apk_project/package.json ./package.json
+          cp /tmp/lightpia/lightpia_apk_project/capacitor.config.json ./capacitor.config.json
+      - name: Install dependencies
+        run: npm install
+      - name: Generate Android project
+        run: npx cap add android
+      - name: Apply branded launcher icons
+        run: |
+          python3 - <<'PYICONS'
           import os, shutil
           for density, size in [('mdpi',48),('hdpi',72),('xhdpi',96),('xxhdpi',144),('xxxhdpi',192)]:
               target=f'android/app/src/main/res/mipmap-{density}'
@@ -30,12 +62,18 @@
           # Android Gradle Plugin creates a debug signing config by default.
           # Force it to use the persistent keystore, not the runner-generated one.
           block = '''
-          afterEvaluate {
-              android.signingConfigs.debug.storeFile = file(System.getenv('LNS_KEYSTORE_PATH'))
-              android.signingConfigs.debug.storePassword = 'android'
-              android.signingConfigs.debug.keyAlias = 'androiddebugkey'
-              android.signingConfigs.debug.keyPassword = 'android'
-              android.buildTypes.debug.signingConfig = android.signingConfigs.debug
+          android {
+              signingConfigs {
+                  debug {
+                      storeFile file(System.getenv('LNS_KEYSTORE_PATH'))
+                      storePassword 'android'
+                      keyAlias 'androiddebugkey'
+                      keyPassword 'android'
+                  }
+              }
+              buildTypes {
+                  debug { signingConfig signingConfigs.debug }
+              }
           }
           '''
           p.write_text(s + '\n' + block)
@@ -50,20 +88,21 @@
         run: |
           set -euo pipefail
           APK=android/app/build/outputs/apk/debug/app-debug.apk
-          keytool -printcert -jarfile "$APK" > "$RUNNER_TEMP/apk-cert.txt"
-          keytool -exportcert -alias androiddebugkey -keystore "$LNS_KEYSTORE_PATH" -storepass android -rfc > "$RUNNER_TEMP/key-cert.pem"
-          keytool -printcert -file "$RUNNER_TEMP/key-cert.pem" > "$RUNNER_TEMP/key-cert.txt"
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          "$APKSIGNER" verify --print-certs "$APK" > "$RUNNER_TEMP/apk-cert.txt"
+          keytool -list -v -keystore "$LNS_KEYSTORE_PATH" -storepass android -alias androiddebugkey > "$RUNNER_TEMP/key-cert.txt"
           python3 - <<'PYVERIFY'
           import pathlib,re,os
           a=pathlib.Path(os.environ['RUNNER_TEMP']+'/apk-cert.txt').read_text()
           b=pathlib.Path(os.environ['RUNNER_TEMP']+'/key-cert.txt').read_text()
-          pattern=r'SHA256:\s*([0-9A-Fa-f:]+)'
-          x=re.search(pattern,a); y=re.search(pattern,b)
+          x=re.search(r'Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]+)',a)
+          y=re.search(r'SHA256:\s*([0-9A-Fa-f:]+)',b)
           if not x or not y: raise RuntimeError('Cannot read certificate fingerprints')
-          print('APK signer SHA256:', x.group(1))
-          print('Expected SHA256:', y.group(1))
-          if x.group(1).lower()!=y.group(1).lower():
-              raise RuntimeError('APK signed by wrong key; refusing to publish')
+          expected=y.group(1).replace(':','').lower()
+          actual=x.group(1).lower()
+          print('APK signer SHA256:',actual)
+          print('Expected SHA256:',expected)
+          if actual!=expected: raise RuntimeError('APK signed by wrong key')
           PYVERIFY
       - uses: actions/upload-artifact@v4
         with:

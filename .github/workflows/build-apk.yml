@@ -30,7 +30,7 @@ jobs:
 
       - name: Extract project ZIP
         run: |
-          unzip -q lightpia_equipment_email_login_v3.zip -d /tmp/lightpiaia
+          unzip -q lightpia_equipment_email_login_v3.zip -d /tmp/lightpia
           cp -r /tmp/lightpia/lightpia_apk_project/www ./www
           cp /tmp/lightpia/lightpia_apk_project/package.json ./package.json
           cp /tmp/lightpia/lightpia_apk_project/capacitor.config.json ./capacitor.config.json

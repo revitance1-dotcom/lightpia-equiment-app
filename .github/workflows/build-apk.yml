@@ -1,55 +1,50 @@
-name: Build Lightpia Equipment APK
+name: Build Android APK
 
 "on":
   workflow_dispatch:
-
-permissions:
-  contents: read
+  push:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Check project files
+        run: |
+          ls -la
+          test -f package.json
+          test -d www
+          test -d .github
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
 
-      - name: Set up Java
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
-
-      - name: Extract app project ZIP
-       run: test -f lightpia_equipment_android_github_build_v2_lns_details.zip
-          mkdir -p /tmp/lightpia-apk
-          unzip -q lightpia_equipment_android_github_build.zip -d /tmp/lightpia-apk
-          cp -R /tmp/lightpia-apk/lightpia_apk_project/www ./www
-          cp /tmp/lightpia-apk/lightpia_apk_project/package.json ./package.json
-          cp /tmp/lightpia-apk/lightpia_apk_project/capacitor.config.json ./capacitor.config.json
+          java-version: 17
 
       - name: Install dependencies
         run: npm install
 
-      - name: Generate Android project
-        run: npx cap add android
+      - name: Build Android APK
+        run: |
+          npx cap sync android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
-      - name: Sync web app into Android project
-        run: npx cap sync android
-
-      - name: Build debug APK
-        working-directory: android
-        run: ./gradlew assembleDebug
-
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: lightpia-equipment-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-          retention-days: 14
-

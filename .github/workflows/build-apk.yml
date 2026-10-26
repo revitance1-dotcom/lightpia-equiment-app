@@ -6,6 +6,9 @@ name: Build Android APK
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,13 +16,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Check project files
-        run: |
-          ls -la
-          test -f package.json
-          test -d www
-          test -d .github
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -30,15 +26,29 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
+
+      - name: Extract project ZIP
+        run: |
+          unzip -q lightpia_equipment_android_github_build_v2_lns_details.zip -d /tmp/lightpia
+          cp -r /tmp/lightpia/lightpia_apk_project/www ./www
+          cp /tmp/lightpia/lightpia_apk_project/package.json ./package.json
+          cp /tmp/lightpia/lightpia_apk_project/capacitor.config.json ./capacitor.config.json
+          test -f package.json
+          test -d www
 
       - name: Install dependencies
         run: npm install
 
-      - name: Build Android APK
+      - name: Generate Android project
+        run: npx cap add android
+
+      - name: Sync Android project
+        run: npx cap sync android
+
+      - name: Build APK
+        working-directory: android
         run: |
-          npx cap sync android
-          cd android
           chmod +x gradlew
           ./gradlew assembleDebug
 
@@ -48,3 +58,4 @@ jobs:
           name: lightpia-equipment-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          retention-days: 14

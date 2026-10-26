@@ -90,19 +90,30 @@ jobs:
           APK=android/app/build/outputs/apk/debug/app-debug.apk
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
           "$APKSIGNER" verify --print-certs "$APK" > "$RUNNER_TEMP/apk-cert.txt"
-          keytool -list -v -keystore "$LNS_KEYSTORE_PATH" -storepass android -alias androiddebugkey > "$RUNNER_TEMP/key-cert.txt"
+          keytool -exportcert -keystore "$LNS_KEYSTORE_PATH" -storepass android -alias androiddebugkey -rfc > "$RUNNER_TEMP/key-cert.pem"
+          openssl x509 -in "$RUNNER_TEMP/key-cert.pem" -noout -fingerprint -sha256 > "$RUNNER_TEMP/key-fingerprint.txt"
           python3 - <<'PYVERIFY'
-          import pathlib,re,os
-          a=pathlib.Path(os.environ['RUNNER_TEMP']+'/apk-cert.txt').read_text()
-          b=pathlib.Path(os.environ['RUNNER_TEMP']+'/key-cert.txt').read_text()
-          x=re.search(r'Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]+)',a)
-          y=re.search(r'SHA256:\s*([0-9A-Fa-f:]+)',b)
-          if not x or not y: raise RuntimeError('Cannot read certificate fingerprints')
-          expected=y.group(1).replace(':','').lower()
-          actual=x.group(1).lower()
-          print('APK signer SHA256:',actual)
-          print('Expected SHA256:',expected)
-          if actual!=expected: raise RuntimeError('APK signed by wrong key')
+          import pathlib, re, os
+          temp = pathlib.Path(os.environ['RUNNER_TEMP'])
+          apk_info = (temp/'apk-cert.txt').read_text()
+          key_info = (temp/'key-fingerprint.txt').read_text()
+          # Android build-tools may print either "SHA-256 digest" or "SHA-256".
+          matches = re.findall(r'(?im)^.*certificate\s+SHA-?256(?:\s+digest)?\s*:\s*([0-9a-f:]+)\s*$', apk_info)
+          if not matches:
+              matches = re.findall(r'(?im)^.*SHA-?256(?:\s+digest)?\s*:\s*([0-9a-f:]+)\s*$', apk_info)
+          key_match = re.search(r'(?i)sha256\s*fingerprint\s*=\s*([0-9a-f:]+)', key_info)
+          if not matches or not key_match:
+              print('APK certificate output:', apk_info)
+              print('Key certificate output:', key_info)
+              raise RuntimeError('Could not parse certificate fingerprints; see outputs above')
+          normalize = lambda s: s.replace(':','').lower()
+          expected = normalize(key_match.group(1))
+          actual = normalize(matches[0])
+          print('APK signer SHA256:', actual)
+          print('Expected SHA256:', expected)
+          if actual != expected:
+              raise RuntimeError('APK is signed with a different key')
+          print('PASS: APK signing certificate matches the permanent keystore')
           PYVERIFY
       - uses: actions/upload-artifact@v4
         with:

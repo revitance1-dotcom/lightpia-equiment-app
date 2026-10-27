@@ -22,17 +22,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Extract push sender
+      - name: Extract server workers
         run: |
           set -euo pipefail
-          unzip -p LIGHTPIA_v9_6_25_studio.zip lightpia_updated/push_sender/send.mjs > /tmp/lightpia-send.mjs
-          unzip -p LIGHTPIA_v9_6_25_studio.zip lightpia_updated/push_sender/package.json > /tmp/lightpia-package.json
+          unzip -q LIGHTPIA_v9_6_26_admin.zip -d /tmp/lightpia-service
           mkdir -p push_sender
-          cp /tmp/lightpia-send.mjs push_sender/send.mjs
-          cp /tmp/lightpia-package.json push_sender/package.json
+          cp -r /tmp/lightpia-service/lightpia_updated/push_sender/. push_sender/
       - name: Install sender dependencies
         working-directory: push_sender
         run: npm install --no-audit --no-fund
+      - name: Process administrator deletion requests
+        working-directory: push_sender
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LIGHT_4E07D }}
+        run: node admin-worker.mjs
       - name: Send reservation notifications
         working-directory: push_sender
         env:

@@ -27,7 +27,7 @@ jobs:
       - name: Extract app
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_25_studio.zip -d /tmp/lightpia
+          unzip -q LIGHTPIA_v9_6_26_admin.zip -d /tmp/lightpia
           mkdir -p ./www
           cp -r /tmp/lightpia/lightpia_updated/www/. ./www/
           cp /tmp/lightpia/lightpia_updated/package.json ./package.json
@@ -40,6 +40,14 @@ jobs:
           node review/check.cjs
           node review/push-panel.cjs
 
+      - name: Test administrator permissions and deletion worker
+        working-directory: /tmp/lightpia/lightpia_updated
+        env:
+          NODE_PATH: /tmp/lightpia-admin-tests/node_modules
+        run: |
+          npm install --prefix /tmp/lightpia-admin-tests --no-save --no-package-lock firebase-tools@13.35.1 @firebase/rules-unit-testing@3.0.4 firebase@10.14.1 firebase-admin@13.0.0
+          /tmp/lightpia-admin-tests/node_modules/.bin/firebase emulators:exec --only firestore,auth --project demo-lightpia --config review/firebase.test.json "node review/run-admin-tests.cjs"
+
       - name: Verify studio theme and loan layouts
         working-directory: /tmp/lightpia/lightpia_updated
         env:
@@ -50,6 +58,7 @@ jobs:
           node /tmp/lightpia-ui/node_modules/playwright/cli.js install --with-deps chromium
           node review/loan-ui.cjs
           node review/studio-ui.cjs
+          node review/admin-ui.cjs
 
       - name: Upload loan layout screenshots
         if: always()
@@ -256,6 +265,27 @@ jobs:
           print('APK contains the validated source.')
           print('APK SHA256:', hashlib.sha256(apk.read_bytes()).hexdigest())
           PYVERIFY
+
+      - name: Prepare isolated administrator queue rules
+        working-directory: /tmp/lightpia/lightpia_updated/push_sender
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LIGHT_4E07D }}
+        run: |
+          npm install --no-audit --no-fund
+          node prepare-admin-rules.mjs
+
+      - name: Validate candidate rules against current production baseline
+        working-directory: /tmp/lightpia/lightpia_updated
+        env:
+          NODE_PATH: /tmp/lightpia-admin-tests/node_modules
+          RULES_FILE: /tmp/lightpia-rules/candidate.rules
+        run: /tmp/lightpia-admin-tests/node_modules/.bin/firebase emulators:exec --only firestore --project demo-lightpia --config review/firebase.test.json "node review/admin-rules.cjs"
+
+      - name: Enable validated administrator queue rules
+        working-directory: /tmp/lightpia/lightpia_updated/push_sender
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LIGHT_4E07D }}
+        run: node release-admin-rules.mjs
 
       - uses: actions/upload-artifact@v4
         with:

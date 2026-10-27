@@ -309,7 +309,7 @@ jobs:
 
           apk = Path('android/app/build/outputs/apk/debug/app-debug.apk')
           with ZipFile(apk) as z:
-              for name in ('app.js', 'index.html', 'sw.js', 'maintenance-model.js'):
+              for name in ('app.js', 'index.html', 'sw.js', 'maintenance-model.js', 'bulk-loan-model.js'):
                   assert z.read('assets/public/' + name) == Path('www', name).read_bytes(), name + ' does not match source'
           print('APK contains the validated source.')
           print('APK SHA256:', hashlib.sha256(apk.read_bytes()).hexdigest())

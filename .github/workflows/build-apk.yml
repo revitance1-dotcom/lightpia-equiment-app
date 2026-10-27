@@ -65,8 +65,14 @@ jobs:
           npm install --prefix /tmp/lightpia-admin-tests --no-save --no-package-lock firebase-tools@13.35.1 @firebase/rules-unit-testing@3.0.4 firebase@10.14.1 firebase-admin@13.0.0
           /tmp/lightpia-admin-tests/node_modules/.bin/firebase emulators:exec --only firestore,auth --project demo-lightpia --config firebase.test.json "node review/run-admin-tests.cjs"
 
+      - name: Cache layout browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-lightpia-playwright-1.56.1
+
       - name: Install layout test browser
-        timeout-minutes: 3
+        timeout-minutes: 6
         run: |
           npm install --prefix /tmp/lightpia-ui --no-save --no-package-lock playwright@1.56.1
           node /tmp/lightpia-ui/node_modules/playwright/cli.js install --with-deps chromium
@@ -303,7 +309,7 @@ jobs:
 
           apk = Path('android/app/build/outputs/apk/debug/app-debug.apk')
           with ZipFile(apk) as z:
-              for name in ('app.js', 'index.html', 'sw.js', 'maintenance-model.mjs'):
+              for name in ('app.js', 'index.html', 'sw.js', 'maintenance-model.js'):
                   assert z.read('assets/public/' + name) == Path('www', name).read_bytes(), name + ' does not match source'
           print('APK contains the validated source.')
           print('APK SHA256:', hashlib.sha256(apk.read_bytes()).hexdigest())

@@ -44,7 +44,7 @@ jobs:
       - name: Extract app
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_26_admin.zip -d /tmp/lightpia
+          unzip -q LIGHTPIA_v9_6_27_maintenance.zip -d /tmp/lightpia
           mkdir -p ./www
           cp -r /tmp/lightpia/lightpia_updated/www/. ./www/
           cp /tmp/lightpia/lightpia_updated/package.json ./package.json
@@ -76,6 +76,7 @@ jobs:
           node review/loan-ui.cjs
           node review/studio-ui.cjs
           node review/admin-ui.cjs
+          node review/maintenance-ui.cjs
 
       - name: Upload loan layout screenshots
         if: always()
@@ -277,7 +278,7 @@ jobs:
 
           apk = Path('android/app/build/outputs/apk/debug/app-debug.apk')
           with ZipFile(apk) as z:
-              for name in ('app.js', 'index.html', 'sw.js'):
+              for name in ('app.js', 'index.html', 'sw.js', 'maintenance-model.mjs'):
                   assert z.read('assets/public/' + name) == Path('www', name).read_bytes(), name + ' does not match source'
           print('APK contains the validated source.')
           print('APK SHA256:', hashlib.sha256(apk.read_bytes()).hexdigest())
@@ -296,7 +297,7 @@ jobs:
         env:
           NODE_PATH: /tmp/lightpia-admin-tests/node_modules
           RULES_FILE: /tmp/lightpia-rules/candidate.rules
-        run: /tmp/lightpia-admin-tests/node_modules/.bin/firebase emulators:exec --only firestore --project demo-lightpia --config firebase.test.json "node review/admin-rules.cjs"
+        run: /tmp/lightpia-admin-tests/node_modules/.bin/firebase emulators:exec --only firestore --project demo-lightpia --config firebase.test.json "node review/run-rule-tests.cjs"
 
       - name: Enable validated administrator queue rules
         working-directory: /tmp/lightpia/lightpia_updated/push_sender

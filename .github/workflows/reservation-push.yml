@@ -25,8 +25,8 @@ jobs:
       - name: Extract push sender
         run: |
           set -euo pipefail
-          unzip -p lightpia_equipment_v9_6_22_push_spark.zip lightpia_apk_project/push_sender/send.mjs > /tmp/lightpia-send.mjs
-          unzip -p lightpia_equipment_v9_6_22_push_spark.zip lightpia_apk_project/push_sender/package.json > /tmp/lightpia-package.json
+          unzip -p LIGHTPIA_v9_6_23_preview.zip lightpia_updated/push_sender/send.mjs > /tmp/lightpia-send.mjs
+          unzip -p LIGHTPIA_v9_6_23_preview.zip lightpia_updated/push_sender/package.json > /tmp/lightpia-package.json
           mkdir -p push_sender
           cp /tmp/lightpia-send.mjs push_sender/send.mjs
           cp /tmp/lightpia-package.json push_sender/package.json

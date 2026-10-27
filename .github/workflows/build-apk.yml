@@ -27,7 +27,7 @@ jobs:
       - name: Extract app
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_23_preview.zip -d /tmp/lightpia
+          unzip -q LIGHTPIA_v9_6_24_loan_ui.zip -d /tmp/lightpia
           mkdir -p ./www
           cp -r /tmp/lightpia/lightpia_updated/www/. ./www/
           cp /tmp/lightpia/lightpia_updated/package.json ./package.json
@@ -39,6 +39,24 @@ jobs:
           node --input-type=module --check < www/app.js
           node review/check.cjs
           node review/push-panel.cjs
+
+      - name: Verify loan layout on mobile and tablet
+        working-directory: /tmp/lightpia/lightpia_updated
+        env:
+          NODE_PATH: /tmp/lightpia-ui/node_modules
+          UI_SCREENSHOT_DIR: /tmp/lightpia-ui/screenshots
+        run: |
+          npm install --prefix /tmp/lightpia-ui --no-save --no-package-lock playwright@1.56.1
+          node /tmp/lightpia-ui/node_modules/playwright/cli.js install --with-deps chromium
+          node review/loan-ui.cjs
+
+      - name: Upload loan layout screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lightpia-loan-ui-screenshots
+          path: /tmp/lightpia-ui/screenshots/*.png
+          if-no-files-found: ignore
 
       - name: Install dependencies
         run: npm install

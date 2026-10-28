@@ -1,4 +1,4 @@
-name: Deploy Lightpia Web App V9.6.36
+name: Deploy Lightpia Web App V9.6.37
 on:
   workflow_dispatch:
   push:
@@ -20,11 +20,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Extract verified V9.6.36 web app
+      - name: Extract verified V9.6.37 web app
         run: |
           set -euo pipefail
-          echo '837dd4fbd38c09384c4a2d06bda545060767af1a162d2e14576362fd3a3178ce  LIGHTPIA_v9_6_36_live_search.zip' | sha256sum -c -
-          unzip -q LIGHTPIA_v9_6_36_live_search.zip -d /tmp/lightpia-web
+          echo 'ce5b7a73fba3dd4c5b2f57103d6b60f96a2436488239fbeb7188b41c7ee0f724  LIGHTPIA_v9_6_37_loan_groups.zip' | sha256sum -c -
+          unzip -q LIGHTPIA_v9_6_37_loan_groups.zip -d /tmp/lightpia-web
           mkdir -p ./www
           cp -r /tmp/lightpia-web/lightpia_updated/www/. ./www/
           test -s www/index.html
@@ -47,11 +47,11 @@ jobs:
           root=Path('www')
           text=(root/'index.html').read_text()
           assert 'data-tab="crew"' in text and 'id="view-crew"' in text
-          assert 'v9-6-36-live-search-1' in (root/'sw.js').read_text()
+          assert 'v9-6-37-loan-groups-1' in (root/'sw.js').read_text()
           assert 'light-4e07d' in (root/'app.js').read_text()
           files={p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.rglob('*')) if p.is_file()}
-          (root/'release.json').write_text(json.dumps({'version':'9.6.36','commit':os.environ['RELEASE_COMMIT'],'source':'LIGHTPIA_v9_6_36_live_search.zip','files':files},indent=2))
-          print('Prepared V9.6.36 release:',len(files),'files')
+          (root/'release.json').write_text(json.dumps({'version':'9.6.37','commit':os.environ['RELEASE_COMMIT'],'source':'LIGHTPIA_v9_6_37_loan_groups.zip','files':files},indent=2))
+          print('Prepared V9.6.37 release:',len(files),'files')
           PY
       - name: Install browser for live login check
         run: |
@@ -61,7 +61,9 @@ jobs:
         working-directory: /tmp/lightpia-web/lightpia_updated
         env:
           NODE_PATH: /tmp/lightpia-web-browser/node_modules
-        run: node review/ime-touch-ui.cjs
+        run: |
+          node review/ime-touch-ui.cjs
+          node review/loan-groups-ui.cjs
       - name: Install signup and inventory rule test tools
         run: npm install --prefix /tmp/lightpia-admin-tests --no-save --no-package-lock firebase-tools@13.35.1 @firebase/rules-unit-testing@3.0.4 firebase@10.14.1 firebase-admin@13.0.0
       - name: Prepare rules from current production version
@@ -103,14 +105,14 @@ jobs:
                   with urllib.request.urlopen(request,timeout=30) as r:
                       actual=json.load(r)
                   assert actual==expected,'Release does not match'
-                  for name in ['index.html','app.js','sw.js','equipment-photos.js','crew-board.js','crew-model.js','signup-model.js','search-input.js','maintenance-model.js','bulk-loan-model.js','equipment-search.js','android-back.js','brand-banner.svg','manifest.webmanifest']:
+                  for name in ['index.html','app.js','sw.js','equipment-photos.js','crew-board.js','crew-model.js','signup-model.js','search-input.js','loan-groups.js','maintenance-model.js','bulk-loan-model.js','equipment-search.js','android-back.js','brand-banner.svg','manifest.webmanifest']:
                       request=urllib.request.Request(base+'/'+name,headers={'Cache-Control':'no-cache'})
                       with urllib.request.urlopen(request,timeout=30) as r:
                           data=r.read()
                           assert 'no-cache' in r.headers.get('Cache-Control',''),name+' cache policy'
                           if name.endswith('.js'): assert 'javascript' in r.headers.get('Content-Type',''),name+' MIME type'
                       assert hashlib.sha256(data).hexdigest()==expected['files'][name],name+' source mismatch'
-                  print('Verified live V9.6.36:',base)
+                  print('Verified live V9.6.37:',base)
                   break
               except Exception:
                   if attempt==2: raise

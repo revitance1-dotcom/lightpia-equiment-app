@@ -1,4 +1,4 @@
-name: Deploy Lightpia Web App V9.6.31
+name: Deploy Lightpia Web App V9.6.32
 on:
   workflow_dispatch:
   push:
@@ -20,11 +20,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Extract verified V9.6.31 web app
+      - name: Extract verified V9.6.32 web app
         run: |
           set -euo pipefail
-          echo '1f8571f3f95baa7249f0fd6e725efe504c1675f41ed1394882e7142368cd36ce  LIGHTPIA_v9_6_31_photos_crew.zip' | sha256sum -c -
-          unzip -q LIGHTPIA_v9_6_31_photos_crew.zip -d /tmp/lightpia-web
+          echo '4265c43ce96c8dcb64a9880223c76f31d4d3bb76b6636fbf18e6e4618bdcad25  LIGHTPIA_v9_6_32_user_guide.zip' | sha256sum -c -
+          unzip -q LIGHTPIA_v9_6_32_user_guide.zip -d /tmp/lightpia-web
           mkdir -p ./www
           cp -r /tmp/lightpia-web/lightpia_updated/www/. ./www/
           test -s www/index.html
@@ -47,11 +47,11 @@ jobs:
           root=Path('www')
           text=(root/'index.html').read_text()
           assert 'data-tab="crew"' in text and 'id="view-crew"' in text
-          assert 'v9-6-31-photos-crew-1' in (root/'sw.js').read_text()
+          assert 'v9-6-32-guide-1' in (root/'sw.js').read_text()
           assert 'light-4e07d' in (root/'app.js').read_text()
           files={p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.rglob('*')) if p.is_file()}
-          (root/'release.json').write_text(json.dumps({'version':'9.6.31','commit':os.environ['RELEASE_COMMIT'],'source':'LIGHTPIA_v9_6_31_photos_crew.zip','files':files},indent=2))
-          print('Prepared V9.6.31 release:',len(files),'files')
+          (root/'release.json').write_text(json.dumps({'version':'9.6.32','commit':os.environ['RELEASE_COMMIT'],'source':'LIGHTPIA_v9_6_32_user_guide.zip','files':files},indent=2))
+          print('Prepared V9.6.32 release:',len(files),'files')
           PY
       - name: Deploy to Firebase Hosting live
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -80,7 +80,7 @@ jobs:
                           assert 'no-cache' in r.headers.get('Cache-Control',''),name+' cache policy'
                           if name.endswith('.js'): assert 'javascript' in r.headers.get('Content-Type',''),name+' MIME type'
                       assert hashlib.sha256(data).hexdigest()==expected['files'][name],name+' source mismatch'
-                  print('Verified live V9.6.31:',base)
+                  print('Verified live V9.6.32:',base)
                   break
               except Exception:
                   if attempt==2: raise
@@ -105,6 +105,19 @@ jobs:
               await page.waitForFunction(()=>document.getElementById('connection')?.textContent.includes('로그인 필요'),{timeout:30000});
               if(!await page.locator('#loginGate').isVisible())throw Error('Login screen missing');
               if(await page.locator('[data-tab="crew"]').count()!==1)throw Error('Crew tab missing');
+              await page.evaluate(()=>{document.getElementById('app').classList.remove('hidden');document.getElementById('loginGate').classList.add('hidden');});
+              await page.locator('[data-tab="settings"]').click();
+              await page.locator('#userGuide>summary').click();
+              if(await page.locator('.guide-topic').count()!==14)throw Error('Manual topics missing');
+              if(!await page.locator('.guide-version').isVisible())throw Error('Manual version missing');
+              for(const width of [320,393,1280]){
+                await page.setViewportSize({width,height:900});
+                await page.locator('.guide-topic').evaluateAll(items=>items.forEach(item=>item.open=true));
+                if(!await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1))throw Error('Manual horizontal overflow '+width);
+              }
+              if(!(await page.locator('#guide-damage').innerText()).includes('본인이 등록한 신고만'))throw Error('Cancellation guide missing');
+              if(!(await page.locator('#guide-backup').innerText()).includes('JSON 백업에 포함되지 않습니다.'))throw Error('Backup scope missing');
+              console.log('PASS live manual: 14 sections visible under Settings, current roles/photos/recruitment/backup instructions, 320/393/1280 widths without overflow');
               if(errors.length)throw Error(errors.join('\n'));
               console.log('PASS live browser: Firebase initialized, login ready, current modules loaded, recruitment tab present, no uncaught errors');
             } finally { await browser.close(); }

@@ -1,4 +1,4 @@
-name: Deploy Lightpia Web App V9.6.34
+name: Deploy Lightpia Web App V9.6.35
 on:
   workflow_dispatch:
   push:
@@ -20,11 +20,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Extract verified V9.6.34 web app
+      - name: Extract verified V9.6.35 web app
         run: |
           set -euo pipefail
-          echo 'a5f5f0980af08cfd89bbe58a2f1dd940efedfa78d5b92211634a32249ac47feb  LIGHTPIA_v9_6_34_ime_touch.zip' | sha256sum -c -
-          unzip -q LIGHTPIA_v9_6_34_ime_touch.zip -d /tmp/lightpia-web
+          echo '0fd719e1200858a7ae14b157d70dba5108efa1929c366996b961438ccc0e7662  LIGHTPIA_v9_6_35_search_editor.zip' | sha256sum -c -
+          unzip -q LIGHTPIA_v9_6_35_search_editor.zip -d /tmp/lightpia-web
           mkdir -p ./www
           cp -r /tmp/lightpia-web/lightpia_updated/www/. ./www/
           test -s www/index.html
@@ -47,11 +47,11 @@ jobs:
           root=Path('www')
           text=(root/'index.html').read_text()
           assert 'data-tab="crew"' in text and 'id="view-crew"' in text
-          assert 'v9-6-34-ime-touch-1' in (root/'sw.js').read_text()
+          assert 'v9-6-35-search-editor-1' in (root/'sw.js').read_text()
           assert 'light-4e07d' in (root/'app.js').read_text()
           files={p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.rglob('*')) if p.is_file()}
-          (root/'release.json').write_text(json.dumps({'version':'9.6.34','commit':os.environ['RELEASE_COMMIT'],'source':'LIGHTPIA_v9_6_34_ime_touch.zip','files':files},indent=2))
-          print('Prepared V9.6.34 release:',len(files),'files')
+          (root/'release.json').write_text(json.dumps({'version':'9.6.35','commit':os.environ['RELEASE_COMMIT'],'source':'LIGHTPIA_v9_6_35_search_editor.zip','files':files},indent=2))
+          print('Prepared V9.6.35 release:',len(files),'files')
           PY
       - name: Install browser for live login check
         run: |
@@ -110,7 +110,7 @@ jobs:
                           assert 'no-cache' in r.headers.get('Cache-Control',''),name+' cache policy'
                           if name.endswith('.js'): assert 'javascript' in r.headers.get('Content-Type',''),name+' MIME type'
                       assert hashlib.sha256(data).hexdigest()==expected['files'][name],name+' source mismatch'
-                  print('Verified live V9.6.34:',base)
+                  print('Verified live V9.6.35:',base)
                   break
               except Exception:
                   if attempt==2: raise
@@ -130,6 +130,7 @@ jobs:
               await page.goto('https://light-4e07d.web.app/',{waitUntil:'networkidle',timeout:60000});
               await page.waitForFunction(()=>document.getElementById('connection')?.textContent.includes('로그인 필요'),{timeout:30000});
               if(!await page.locator('#loginGate').isVisible())throw Error('Login screen missing');
+              if(await page.locator('#equipmentSearch').getAttribute('contenteditable')!=='plaintext-only')throw Error('New Korean search editor missing');
               if(await page.locator('[data-tab="crew"]').count()!==1)throw Error('Crew tab missing');
               await page.evaluate(()=>{document.getElementById('app').classList.remove('hidden');document.getElementById('loginGate').classList.add('hidden');});
               await page.locator('[data-tab="settings"]').click();

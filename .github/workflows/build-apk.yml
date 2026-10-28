@@ -44,7 +44,7 @@ jobs:
       - name: Extract app
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_30_tags_back.zip -d /tmp/lightpia
+          unzip -q LIGHTPIA_v9_6_31_photos_crew.zip -d /tmp/lightpia
           mkdir -p ./www
           cp -r /tmp/lightpia/lightpia_updated/www/. ./www/
           cp /tmp/lightpia/lightpia_updated/package.json ./package.json
@@ -116,6 +116,14 @@ jobs:
         env:
           NODE_PATH: /tmp/lightpia-ui/node_modules
         run: node review/edit-search-ui.cjs
+
+      - name: Verify equipment photos and crew recruitment
+        timeout-minutes: 3
+        working-directory: /tmp/lightpia/lightpia_updated
+        env:
+          NODE_PATH: /tmp/lightpia-ui/node_modules
+          UI_SCREENSHOT_DIR: /tmp/lightpia-ui/screenshots
+        run: node review/photos-crew-ui.cjs
 
       - name: Upload loan layout screenshots
         if: always()
@@ -317,7 +325,7 @@ jobs:
 
           apk = Path('android/app/build/outputs/apk/debug/app-debug.apk')
           with ZipFile(apk) as z:
-              for name in ('app.js', 'index.html', 'sw.js', 'maintenance-model.js', 'bulk-loan-model.js', 'equipment-search.js', 'android-back.js'):
+              for name in ('app.js', 'index.html', 'sw.js', 'maintenance-model.js', 'bulk-loan-model.js', 'equipment-search.js', 'android-back.js', 'equipment-photos.js', 'crew-board.js', 'crew-model.js'):
                   assert z.read('assets/public/' + name) == Path('www', name).read_bytes(), name + ' does not match source'
               assert any(p.get('classpath') == 'com.capacitorjs.plugins.app.AppPlugin' for p in json.loads(z.read('assets/capacitor.plugins.json'))), 'Native App back button plugin missing'
           print('APK contains the validated source.')

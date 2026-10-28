@@ -1,0 +1,35 @@
+name: Diagnose signup permissions
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/diagnose-signup.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix /tmp/signup --no-save firebase-admin@13.0.0
+      - env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LIGHT_4E07D }}
+        run: |
+          NODE_PATH=/tmp/signup/node_modules node <<'JS'
+          const admin=require('firebase-admin');
+          const account=JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+          if(account.project_id!=='light-4e07d')throw Error('Unexpected project');
+          admin.initializeApp({credential:admin.credential.cert(account)});
+          (async()=>{
+            const active=await admin.securityRules().getFirestoreRuleset();
+            const s=active.source[0].content;
+            const at=s.indexOf('match /joinRequests/');
+            console.log('ACTIVE SIGNUP RULES',s.slice(at,s.indexOf('\n  match ',at+1)));
+            try {
+              const u=await admin.auth().getUserByEmail('xp5026@accounts.lightpia.internal');
+              console.log('Affected account exists:',true,'disabled:',u.disabled);
+              console.log('Affected join request exists:',(await admin.firestore().doc('joinRequests/'+u.uid).get()).exists);
+            }catch(e){if(e.code==='auth/user-not-found')console.log('Affected account exists:',false);else throw e;}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS

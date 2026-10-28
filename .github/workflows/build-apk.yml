@@ -45,7 +45,7 @@ jobs:
       - name: Extract app
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_40_stock_returns.zip -d /tmp/lightpia
+          unzip -q LIGHTPIA_v9_6_41_photo_frame.zip -d /tmp/lightpia
           mkdir -p ./www
           cp -r /tmp/lightpia/lightpia_updated/www/. ./www/
           cp /tmp/lightpia/lightpia_updated/package.json ./package.json
@@ -147,7 +147,9 @@ jobs:
         env:
           NODE_PATH: /tmp/lightpia-ui/node_modules
           UI_SCREENSHOT_DIR: /tmp/lightpia-ui/screenshots
-        run: node review/photos-crew-ui.cjs
+        run: |
+          node review/photos-crew-ui.cjs
+          node review/photo-frame-ui.cjs
 
       - name: Upload loan layout screenshots
         if: always()

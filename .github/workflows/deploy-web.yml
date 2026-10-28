@@ -23,7 +23,7 @@ jobs:
       - name: Extract verified V9.6.42 web app
         run: |
           set -euo pipefail
-          echo '90dbb2d19ba9465b8476538794017c968c5168bf7183ed7f5cedce6a2beaa5de  LIGHTPIA_v9_6_42_shared_photos.zip' | sha256sum -c -
+          echo 'd8c726345c28153574c721f5d6f57aced9c5de7be671a2f8592c2f4739ad02c2  LIGHTPIA_v9_6_42_shared_photos.zip' | sha256sum -c -
           unzip -q LIGHTPIA_v9_6_42_shared_photos.zip -d /tmp/lightpia-web
           mkdir -p ./www
           cp -r /tmp/lightpia-web/lightpia_updated/www/. ./www/

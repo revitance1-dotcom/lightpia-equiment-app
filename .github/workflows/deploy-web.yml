@@ -1,4 +1,4 @@
-name: Deploy Lightpia Web App V9.6.41
+name: Deploy Lightpia Web App V9.6.42
 on:
   workflow_dispatch:
   push:
@@ -20,11 +20,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Extract verified V9.6.41 web app
+      - name: Extract verified V9.6.42 web app
         run: |
           set -euo pipefail
-          echo '1cf9b7c64f62fe01c5ce4ef0050e9bedae47a7ea8ae6f1c68d87b256595e019f  LIGHTPIA_v9_6_41_photo_frame.zip' | sha256sum -c -
-          unzip -q LIGHTPIA_v9_6_41_photo_frame.zip -d /tmp/lightpia-web
+          echo '90dbb2d19ba9465b8476538794017c968c5168bf7183ed7f5cedce6a2beaa5de  LIGHTPIA_v9_6_42_shared_photos.zip' | sha256sum -c -
+          unzip -q LIGHTPIA_v9_6_42_shared_photos.zip -d /tmp/lightpia-web
           mkdir -p ./www
           cp -r /tmp/lightpia-web/lightpia_updated/www/. ./www/
           test -s www/index.html
@@ -47,11 +47,11 @@ jobs:
           root=Path('www')
           text=(root/'index.html').read_text()
           assert 'data-tab="crew"' in text and 'id="view-crew"' in text
-          assert 'v9-6-41-photo-frame-1' in (root/'sw.js').read_text()
+          assert 'v9-6-42-shared-photos-1' in (root/'sw.js').read_text()
           assert 'light-4e07d' in (root/'app.js').read_text()
           files={p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.rglob('*')) if p.is_file()}
-          (root/'release.json').write_text(json.dumps({'version':'9.6.41','commit':os.environ['RELEASE_COMMIT'],'source':'LIGHTPIA_v9_6_41_photo_frame.zip','files':files},indent=2))
-          print('Prepared V9.6.41 release:',len(files),'files')
+          (root/'release.json').write_text(json.dumps({'version':'9.6.42','commit':os.environ['RELEASE_COMMIT'],'source':'LIGHTPIA_v9_6_42_shared_photos.zip','files':files},indent=2))
+          print('Prepared V9.6.42 release:',len(files),'files')
           PY
       - name: Install browser for live login check
         run: |
@@ -67,6 +67,7 @@ jobs:
           node review/account-label-ui.cjs
           node review/stock-returns-ui.cjs
           node review/photo-frame-ui.cjs
+          node review/shared-photos-ui.cjs
       - name: Install signup and inventory rule test tools
         run: npm install --prefix /tmp/lightpia-admin-tests --no-save --no-package-lock firebase-tools@13.35.1 @firebase/rules-unit-testing@3.0.4 firebase@10.14.1 firebase-admin@13.0.0
       - name: Prepare rules from current production version
@@ -115,7 +116,7 @@ jobs:
                           assert 'no-cache' in r.headers.get('Cache-Control',''),name+' cache policy'
                           if name.endswith('.js'): assert 'javascript' in r.headers.get('Content-Type',''),name+' MIME type'
                       assert hashlib.sha256(data).hexdigest()==expected['files'][name],name+' source mismatch'
-                  print('Verified live V9.6.41:',base)
+                  print('Verified live V9.6.42:',base)
                   break
               except Exception:
                   if attempt==2: raise

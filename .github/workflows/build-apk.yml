@@ -45,7 +45,7 @@ jobs:
       - name: Extract app
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_41_photo_frame.zip -d /tmp/lightpia
+          unzip -q LIGHTPIA_v9_6_42_shared_photos.zip -d /tmp/lightpia
           mkdir -p ./www
           cp -r /tmp/lightpia/lightpia_updated/www/. ./www/
           cp /tmp/lightpia/lightpia_updated/package.json ./package.json
@@ -150,6 +150,7 @@ jobs:
         run: |
           node review/photos-crew-ui.cjs
           node review/photo-frame-ui.cjs
+          node review/shared-photos-ui.cjs
 
       - name: Upload loan layout screenshots
         if: always()

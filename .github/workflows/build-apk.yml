@@ -45,7 +45,7 @@ jobs:
       - name: Extract app
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_43_backup_untracked.zip -d /tmp/lightpia
+          unzip -q LIGHTPIA_v9_6_44_team_archive.zip -d /tmp/lightpia
           mkdir -p ./www
           cp -r /tmp/lightpia/lightpia_updated/www/. ./www/
           cp /tmp/lightpia/lightpia_updated/package.json ./package.json
@@ -56,6 +56,9 @@ jobs:
         run: |
           node --input-type=module --check < www/app.js
           node review/check.cjs
+          node review/team-lifecycle.cjs
+          node review/team-delete.mjs
+          node review/team-render.cjs
           node review/push-panel.cjs
           node review/search-back.cjs
 
@@ -108,6 +111,7 @@ jobs:
           NODE_PATH: /tmp/lightpia-ui/node_modules
         run: |
           node review/account-label-ui.cjs
+          node review/team-archive-ui.cjs
           node review/stock-returns-ui.cjs
 
       - name: Verify studio layout

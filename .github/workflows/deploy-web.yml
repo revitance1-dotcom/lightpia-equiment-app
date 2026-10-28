@@ -1,25 +1,112 @@
-name: Deploy Lightpia Web App V9.6.21
+name: Deploy Lightpia Web App V9.6.31
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-web.yml'
+      - 'firebase.json'
 permissions:
   contents: read
+concurrency:
+  group: lightpia-web-live
+  cancel-in-progress: false
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Extract V9.6.21 web app
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Extract verified V9.6.31 web app
         run: |
           set -euo pipefail
-          unzip -q lightpia_equipment_v9_6_21_bulk_delete_pc.zip -d /tmp/lightpia-web
-          rm -rf ./www
-          cp -r /tmp/lightpia-web/lightpia_apk_project/www ./www
+          echo '1f8571f3f95baa7249f0fd6e725efe504c1675f41ed1394882e7142368cd36ce  LIGHTPIA_v9_6_31_photos_crew.zip' | sha256sum -c -
+          unzip -q LIGHTPIA_v9_6_31_photos_crew.zip -d /tmp/lightpia-web
+          mkdir -p ./www
+          cp -r /tmp/lightpia-web/lightpia_updated/www/. ./www/
           test -s www/index.html
-          test -s www/app.js
-      - name: Deploy to Firebase Hosting
+          test -s www/crew-board.js
+          test -s www/equipment-photos.js
+      - name: Validate source and record release
+        env:
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for file in www/*.js; do node --check "$file"; done
+          cd /tmp/lightpia-web/lightpia_updated
+          node review/check.cjs
+          node review/push-panel.cjs
+          node review/search-back.cjs
+          cd "$GITHUB_WORKSPACE"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path('www')
+          text=(root/'index.html').read_text()
+          assert 'data-tab="crew"' in text and 'id="view-crew"' in text
+          assert 'v9-6-31-photos-crew-1' in (root/'sw.js').read_text()
+          assert 'light-4e07d' in (root/'app.js').read_text()
+          files={p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.rglob('*')) if p.is_file()}
+          (root/'release.json').write_text(json.dumps({'version':'9.6.31','commit':os.environ['RELEASE_COMMIT'],'source':'LIGHTPIA_v9_6_31_photos_crew.zip','files':files},indent=2))
+          print('Prepared V9.6.31 release:',len(files),'files')
+          PY
+      - name: Deploy to Firebase Hosting live
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LIGHT_4E07D }}
           channelId: live
           projectId: light-4e07d
+      - name: Verify live files match the tested source
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,time,urllib.request
+          from pathlib import Path
+          expected=json.loads(Path('www/release.json').read_text())
+          base='https://light-4e07d.web.app'
+          for attempt in range(3):
+              try:
+                  request=urllib.request.Request(base+'/release.json',headers={'Cache-Control':'no-cache'})
+                  with urllib.request.urlopen(request,timeout=30) as r:
+                      actual=json.load(r)
+                  assert actual==expected,'Release does not match'
+                  for name in ['index.html','app.js','sw.js','equipment-photos.js','crew-board.js','crew-model.js','maintenance-model.js','bulk-loan-model.js','equipment-search.js','android-back.js','brand-banner.svg','manifest.webmanifest']:
+                      request=urllib.request.Request(base+'/'+name,headers={'Cache-Control':'no-cache'})
+                      with urllib.request.urlopen(request,timeout=30) as r:
+                          data=r.read()
+                          assert 'no-cache' in r.headers.get('Cache-Control',''),name+' cache policy'
+                          if name.endswith('.js'): assert 'javascript' in r.headers.get('Content-Type',''),name+' MIME type'
+                      assert hashlib.sha256(data).hexdigest()==expected['files'][name],name+' source mismatch'
+                  print('Verified live V9.6.31:',base)
+                  break
+              except Exception:
+                  if attempt==2: raise
+                  time.sleep(5)
+          PY
+      - name: Install browser for live login check
+        run: |
+          npm install --prefix /tmp/lightpia-web-browser --no-save --no-package-lock playwright@1.56.1
+          node /tmp/lightpia-web-browser/node_modules/playwright/cli.js install chromium
+      - name: Verify live app initializes in browser
+        env:
+          NODE_PATH: /tmp/lightpia-web-browser/node_modules
+        run: |
+          node <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+            try {
+              const page=await browser.newPage({viewport:{width:393,height:850}});
+              const errors=[];page.on('pageerror',error=>errors.push(error.message));
+              await page.goto('https://light-4e07d.web.app/',{waitUntil:'networkidle',timeout:60000});
+              await page.waitForFunction(()=>document.getElementById('connection')?.textContent.includes('로그인 필요'),{timeout:30000});
+              if(!await page.locator('#loginGate').isVisible())throw Error('Login screen missing');
+              if(await page.locator('[data-tab="crew"]').count()!==1)throw Error('Crew tab missing');
+              if(errors.length)throw Error(errors.join('\n'));
+              console.log('PASS live browser: Firebase initialized, login ready, current modules loaded, recruitment tab present, no uncaught errors');
+            } finally { await browser.close(); }
+          })().catch(error=>{console.error(error);process.exit(1)});
+          JS

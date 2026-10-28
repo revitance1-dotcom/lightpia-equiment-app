@@ -45,7 +45,7 @@ jobs:
       - name: Extract app
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_39_account_label.zip -d /tmp/lightpia
+          unzip -q LIGHTPIA_v9_6_40_stock_returns.zip -d /tmp/lightpia
           mkdir -p ./www
           cp -r /tmp/lightpia/lightpia_updated/www/. ./www/
           cp /tmp/lightpia/lightpia_updated/package.json ./package.json
@@ -106,7 +106,9 @@ jobs:
         working-directory: /tmp/lightpia/lightpia_updated
         env:
           NODE_PATH: /tmp/lightpia-ui/node_modules
-        run: node review/account-label-ui.cjs
+        run: |
+          node review/account-label-ui.cjs
+          node review/stock-returns-ui.cjs
 
       - name: Verify studio layout
         timeout-minutes: 2

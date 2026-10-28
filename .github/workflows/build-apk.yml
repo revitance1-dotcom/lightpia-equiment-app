@@ -45,7 +45,7 @@ jobs:
       - name: Extract app
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_38_team_selection.zip -d /tmp/lightpia
+          unzip -q LIGHTPIA_v9_6_39_account_label.zip -d /tmp/lightpia
           mkdir -p ./www
           cp -r /tmp/lightpia/lightpia_updated/www/. ./www/
           cp /tmp/lightpia/lightpia_updated/package.json ./package.json
@@ -100,6 +100,13 @@ jobs:
         env:
           NODE_PATH: /tmp/lightpia-ui/node_modules
         run: node review/loan-groups-ui.cjs
+
+      - name: Verify account team and project labels
+        timeout-minutes: 2
+        working-directory: /tmp/lightpia/lightpia_updated
+        env:
+          NODE_PATH: /tmp/lightpia-ui/node_modules
+        run: node review/account-label-ui.cjs
 
       - name: Verify studio layout
         timeout-minutes: 2

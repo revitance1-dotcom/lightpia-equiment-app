@@ -1,4 +1,4 @@
-name: Deploy Lightpia Web App V9.6.43
+name: Deploy Lightpia Web App (same source as APK)
 on:
   workflow_dispatch:
   push:
@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/deploy-web.yml'
       - 'firebase.json'
+      - '.github/workflows/build-apk.yml'
+      - 'LIGHTPIA_*.zip'
 permissions:
   contents: read
 concurrency:
@@ -20,16 +22,32 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Extract verified V9.6.43 web app
+      - name: Extract the same release source as Android
         run: |
           set -euo pipefail
-          echo '810e3e7d65410b48d675ff7b2c92acc4f0bd7e69a9dc5771feeacd98e53c756e  LIGHTPIA_v9_6_43_backup_untracked.zip' | sha256sum -c -
-          unzip -q LIGHTPIA_v9_6_43_backup_untracked.zip -d /tmp/lightpia-web
-          mkdir -p ./www
-          cp -r /tmp/lightpia-web/lightpia_updated/www/. ./www/
+          python3 - <<'PYCODE'
+          import hashlib,os,re,shutil,zipfile
+          from pathlib import Path
+          workflow=Path('.github/workflows/build-apk.yml').read_text()
+          archives=re.findall(r'unzip -q (LIGHTPIA_[A-Za-z0-9_.-]+\.zip) -d /tmp/lightpia(?:\s|$)',workflow)
+          assert len(archives)==1, 'Expected exactly one Android source archive'
+          archive=Path(archives[0])
+          with zipfile.ZipFile(archive) as z:
+              assert all(not Path(n).is_absolute() and '..' not in Path(n).parts for n in z.namelist())
+              z.extractall('/tmp/lightpia-web')
+          shutil.copytree('/tmp/lightpia-web/lightpia_updated/www','www',dirs_exist_ok=True)
+          match=re.search(r'v(\d+)-(\d+)-(\d+)-',Path('www/sw.js').read_text())
+          assert match, 'Release version missing'
+          with open(os.environ['GITHUB_ENV'],'a') as env:
+              env.write('RELEASE_SOURCE='+archive.name+'\n')
+              env.write('RELEASE_VERSION='+'.'.join(match.groups())+'\n')
+              env.write('RELEASE_SOURCE_SHA256='+hashlib.sha256(archive.read_bytes()).hexdigest()+'\n')
+          print('Using Android source:',archive.name)
+          PYCODE
           test -s www/index.html
-          test -s www/crew-board.js
-          test -s www/equipment-photos.js
+          test -s www/equipment-units.js
+          test -s www/photo-backup.js
+          test -s www/reservation-parties.js
       - name: Validate source and record release
         env:
           RELEASE_COMMIT: ${{ github.sha }}
@@ -38,6 +56,10 @@ jobs:
           for file in www/*.js; do node --check "$file"; done
           cd /tmp/lightpia-web/lightpia_updated
           node review/check.cjs
+          node review/equipment-units.cjs
+          node review/team-lifecycle.cjs
+          node review/team-delete.mjs
+          node review/team-render.cjs
           node review/push-panel.cjs
           node review/search-back.cjs
           cd "$GITHUB_WORKSPACE"
@@ -47,11 +69,11 @@ jobs:
           root=Path('www')
           text=(root/'index.html').read_text()
           assert 'data-tab="crew"' in text and 'id="view-crew"' in text
-          assert 'v9-6-43-backup-untracked-1' in (root/'sw.js').read_text()
+          assert ('v'+os.environ['RELEASE_VERSION'].replace('.','-')+'-') in (root/'sw.js').read_text()
           assert 'light-4e07d' in (root/'app.js').read_text()
           files={p.relative_to(root).as_posix():hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(root.rglob('*')) if p.is_file()}
-          (root/'release.json').write_text(json.dumps({'version':'9.6.43','commit':os.environ['RELEASE_COMMIT'],'source':'LIGHTPIA_v9_6_43_backup_untracked.zip','files':files},indent=2))
-          print('Prepared V9.6.43 release:',len(files),'files')
+          (root/'release.json').write_text(json.dumps({'version':os.environ['RELEASE_VERSION'],'commit':os.environ['RELEASE_COMMIT'],'source':os.environ['RELEASE_SOURCE'],'sourceSha256':os.environ['RELEASE_SOURCE_SHA256'],'files':files},indent=2))
+          print('Prepared release:',os.environ['RELEASE_VERSION'],len(files),'files')
           PY
       - name: Install browser for live login check
         run: |
@@ -62,6 +84,10 @@ jobs:
         env:
           NODE_PATH: /tmp/lightpia-web-browser/node_modules
         run: |
+          node review/equipment-units-ui.cjs
+          node review/photo-backup-ui.cjs
+          node review/external-reservations-ui.cjs
+          node review/team-archive-ui.cjs
           node review/ime-touch-ui.cjs
           node review/loan-groups-ui.cjs
           node review/account-label-ui.cjs
@@ -85,7 +111,7 @@ jobs:
           NODE_PATH: /tmp/lightpia-admin-tests/node_modules
           RULES_FILE: /tmp/lightpia-rules/candidate.rules
         run: /tmp/lightpia-admin-tests/node_modules/.bin/firebase emulators:exec --only firestore,auth --project demo-lightpia --config firebase.test.json "node review/run-rule-tests.cjs"
-      - name: Release validated optional-team signup rule
+      - name: Release validated permissions and stock unit rules
         working-directory: /tmp/lightpia-web/lightpia_updated/push_sender
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LIGHT_4E07D }}
@@ -110,14 +136,14 @@ jobs:
                   with urllib.request.urlopen(request,timeout=30) as r:
                       actual=json.load(r)
                   assert actual==expected,'Release does not match'
-                  for name in ['index.html','app.js','sw.js','equipment-photos.js','crew-board.js','crew-model.js','signup-model.js','search-input.js','loan-groups.js','maintenance-model.js','bulk-loan-model.js','equipment-search.js','android-back.js','brand-banner.svg','manifest.webmanifest']:
+                  for name in ['index.html','app.js','sw.js','equipment-photos.js','equipment-units.js','photo-backup.js','reservation-parties.js','crew-board.js','crew-model.js','signup-model.js','search-input.js','loan-groups.js','maintenance-model.js','bulk-loan-model.js','equipment-search.js','android-back.js','brand-banner.svg','manifest.webmanifest']:
                       request=urllib.request.Request(base+'/'+name,headers={'Cache-Control':'no-cache'})
                       with urllib.request.urlopen(request,timeout=30) as r:
                           data=r.read()
                           assert 'no-cache' in r.headers.get('Cache-Control',''),name+' cache policy'
                           if name.endswith('.js'): assert 'javascript' in r.headers.get('Content-Type',''),name+' MIME type'
                       assert hashlib.sha256(data).hexdigest()==expected['files'][name],name+' source mismatch'
-                  print('Verified live V9.6.43:',base)
+                  print('Verified live release:',expected['version'],base)
                   break
               except Exception:
                   if attempt==2: raise
@@ -151,7 +177,11 @@ jobs:
                 if(!await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1))throw Error('Manual horizontal overflow '+width);
               }
               if(!(await page.locator('#guide-damage').innerText()).includes('본인이 등록한 신고만'))throw Error('Cancellation guide missing');
-              if(!(await page.locator('#guide-backup').innerText()).includes('JSON 백업에 포함되지 않습니다.'))throw Error('Backup scope missing');
+              if(!(await page.locator('#guide-backup').innerText()).includes('사진 전용 JSON'))throw Error('Photo backup guide missing');
+              if(!(await page.locator('#guide-backup').innerText()).includes('BOX'))throw Error('BOX/EA guide missing');
+              if(!await page.locator('#exportPhotoBackupBtn').count())throw Error('Photo backup controls missing');
+              const liveRelease=await (await page.request.get('https://light-4e07d.web.app/release.json')).json();
+              if(liveRelease.version!==process.env.RELEASE_VERSION)throw Error('Live browser release mismatch');
               console.log('PASS live manual: 14 sections visible under Settings, current roles/photos/recruitment/backup instructions, 320/393/1280 widths without overflow');
               if(errors.length)throw Error(errors.join('\n'));
               console.log('PASS live browser: Firebase initialized, login ready, current modules loaded, recruitment tab present, no uncaught errors');

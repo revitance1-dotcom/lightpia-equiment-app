@@ -45,7 +45,7 @@ jobs:
       - name: Extract app
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_49_reservation_fulfillment.zip -d /tmp/lightpia
+          unzip -q LIGHTPIA_v9_6_50_display_order.zip -d /tmp/lightpia
           mkdir -p ./www
           cp -r /tmp/lightpia/lightpia_updated/www/. ./www/
           cp /tmp/lightpia/lightpia_updated/package.json ./package.json
@@ -58,6 +58,7 @@ jobs:
           node --input-type=module --check < www/photo-backup.js
           node --input-type=module --check < www/reservation-parties.js
           node review/check.cjs
+          node review/display-order.cjs
           node review/equipment-units.cjs
           node review/period-capacity.cjs
           node review/team-lifecycle.cjs
@@ -92,6 +93,7 @@ jobs:
         env:
           NODE_PATH: /tmp/lightpia-ui/node_modules
         run: |
+          node review/display-order-ui.cjs
           node review/equipment-units-ui.cjs
           node review/photo-backup-ui.cjs
           node review/external-reservations-ui.cjs

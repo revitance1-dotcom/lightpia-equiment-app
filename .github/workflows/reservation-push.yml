@@ -25,7 +25,7 @@ jobs:
       - name: Extract server workers
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_44_team_archive.zip -d /tmp/lightpia-service
+          unzip -q LIGHTPIA_v9_6_45_photo_backup.zip -d /tmp/lightpia-service
           mkdir -p push_sender
           cp -r /tmp/lightpia-service/lightpia_updated/push_sender/. push_sender/
       - name: Install sender dependencies

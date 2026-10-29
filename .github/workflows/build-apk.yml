@@ -45,7 +45,7 @@ jobs:
       - name: Extract app
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_44_team_archive.zip -d /tmp/lightpia
+          unzip -q LIGHTPIA_v9_6_45_photo_backup.zip -d /tmp/lightpia
           mkdir -p ./www
           cp -r /tmp/lightpia/lightpia_updated/www/. ./www/
           cp /tmp/lightpia/lightpia_updated/package.json ./package.json
@@ -55,6 +55,8 @@ jobs:
         working-directory: /tmp/lightpia/lightpia_updated
         run: |
           node --input-type=module --check < www/app.js
+          node --input-type=module --check < www/photo-backup.js
+          node --input-type=module --check < www/reservation-parties.js
           node review/check.cjs
           node review/team-lifecycle.cjs
           node review/team-delete.mjs
@@ -156,6 +158,8 @@ jobs:
           node review/photo-frame-ui.cjs
           node review/shared-photos-ui.cjs
           node review/backup-ui.cjs
+          node review/photo-backup-ui.cjs
+          node review/external-reservations-ui.cjs
 
       - name: Upload loan layout screenshots
         if: always()
@@ -357,7 +361,7 @@ jobs:
 
           apk = Path('android/app/build/outputs/apk/debug/app-debug.apk')
           with ZipFile(apk) as z:
-              for name in ('app.js', 'index.html', 'sw.js', 'maintenance-model.js', 'bulk-loan-model.js', 'equipment-search.js', 'android-back.js', 'equipment-photos.js', 'crew-board.js', 'crew-model.js', 'signup-model.js', 'search-input.js', 'loan-groups.js'):
+              for name in ('app.js', 'index.html', 'sw.js', 'maintenance-model.js', 'bulk-loan-model.js', 'equipment-search.js', 'android-back.js', 'equipment-photos.js', 'photo-backup.js', 'reservation-parties.js', 'crew-board.js', 'crew-model.js', 'signup-model.js', 'search-input.js', 'loan-groups.js'):
                   assert z.read('assets/public/' + name) == Path('www', name).read_bytes(), name + ' does not match source'
               assert any(p.get('classpath') == 'com.capacitorjs.plugins.app.AppPlugin' for p in json.loads(z.read('assets/capacitor.plugins.json'))), 'Native App back button plugin missing'
           print('APK contains the validated source.')

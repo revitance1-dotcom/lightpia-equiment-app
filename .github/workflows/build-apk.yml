@@ -45,7 +45,7 @@ jobs:
       - name: Extract app
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_45_photo_backup.zip -d /tmp/lightpia
+          unzip -q LIGHTPIA_v9_6_46_box_ea.zip -d /tmp/lightpia
           mkdir -p ./www
           cp -r /tmp/lightpia/lightpia_updated/www/. ./www/
           cp /tmp/lightpia/lightpia_updated/package.json ./package.json
@@ -58,6 +58,7 @@ jobs:
           node --input-type=module --check < www/photo-backup.js
           node --input-type=module --check < www/reservation-parties.js
           node review/check.cjs
+          node review/equipment-units.cjs
           node review/team-lifecycle.cjs
           node review/team-delete.mjs
           node review/team-render.cjs
@@ -90,6 +91,7 @@ jobs:
         env:
           NODE_PATH: /tmp/lightpia-ui/node_modules
         run: |
+          node review/equipment-units-ui.cjs
           node review/photo-backup-ui.cjs
           node review/external-reservations-ui.cjs
 
@@ -368,7 +370,7 @@ jobs:
 
           apk = Path('android/app/build/outputs/apk/debug/app-debug.apk')
           with ZipFile(apk) as z:
-              for name in ('app.js', 'index.html', 'sw.js', 'maintenance-model.js', 'bulk-loan-model.js', 'equipment-search.js', 'android-back.js', 'equipment-photos.js', 'photo-backup.js', 'reservation-parties.js', 'crew-board.js', 'crew-model.js', 'signup-model.js', 'search-input.js', 'loan-groups.js'):
+              for name in ('app.js', 'index.html', 'sw.js', 'maintenance-model.js', 'bulk-loan-model.js', 'equipment-search.js', 'android-back.js', 'equipment-photos.js', 'equipment-units.js', 'photo-backup.js', 'reservation-parties.js', 'crew-board.js', 'crew-model.js', 'signup-model.js', 'search-input.js', 'loan-groups.js'):
                   assert z.read('assets/public/' + name) == Path('www', name).read_bytes(), name + ' does not match source'
               assert any(p.get('classpath') == 'com.capacitorjs.plugins.app.AppPlugin' for p in json.loads(z.read('assets/capacitor.plugins.json'))), 'Native App back button plugin missing'
           print('APK contains the validated source.')

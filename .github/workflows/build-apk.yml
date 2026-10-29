@@ -84,6 +84,15 @@ jobs:
           npm install --prefix /tmp/lightpia-ui --no-save --no-package-lock playwright@1.56.1
           node /tmp/lightpia-ui/node_modules/playwright/cli.js install chromium
 
+      - name: Verify photo backups and external reservations
+        timeout-minutes: 3
+        working-directory: /tmp/lightpia/lightpia_updated
+        env:
+          NODE_PATH: /tmp/lightpia-ui/node_modules
+        run: |
+          node review/photo-backup-ui.cjs
+          node review/external-reservations-ui.cjs
+
       - name: Verify loan layout
         timeout-minutes: 2
         working-directory: /tmp/lightpia/lightpia_updated
@@ -158,8 +167,6 @@ jobs:
           node review/photo-frame-ui.cjs
           node review/shared-photos-ui.cjs
           node review/backup-ui.cjs
-          node review/photo-backup-ui.cjs
-          node review/external-reservations-ui.cjs
 
       - name: Upload loan layout screenshots
         if: always()

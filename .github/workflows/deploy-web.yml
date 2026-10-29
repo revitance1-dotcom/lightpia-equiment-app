@@ -84,6 +84,7 @@ jobs:
         env:
           NODE_PATH: /tmp/lightpia-web-browser/node_modules
         run: |
+          node review/maintenance-ui.cjs
           node review/equipment-units-ui.cjs
           node review/photo-backup-ui.cjs
           node review/external-reservations-ui.cjs

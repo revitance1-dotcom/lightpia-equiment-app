@@ -45,7 +45,7 @@ jobs:
       - name: Extract app
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_46_box_ea.zip -d /tmp/lightpia
+          unzip -q LIGHTPIA_v9_6_47_damage_ea.zip -d /tmp/lightpia
           mkdir -p ./www
           cp -r /tmp/lightpia/lightpia_updated/www/. ./www/
           cp /tmp/lightpia/lightpia_updated/package.json ./package.json

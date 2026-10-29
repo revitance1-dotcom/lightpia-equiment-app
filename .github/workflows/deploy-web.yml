@@ -57,6 +57,7 @@ jobs:
           cd /tmp/lightpia-web/lightpia_updated
           node review/check.cjs
           node review/equipment-units.cjs
+          node review/period-capacity.cjs
           node review/team-lifecycle.cjs
           node review/team-delete.mjs
           node review/team-render.cjs
@@ -116,7 +117,9 @@ jobs:
         working-directory: /tmp/lightpia-web/lightpia_updated/push_sender
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LIGHT_4E07D }}
-        run: node release-admin-rules.mjs
+        run: |
+          node release-admin-rules.mjs
+          node bootstrap-availability.mjs
       - name: Deploy to Firebase Hosting live
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -137,7 +140,7 @@ jobs:
                   with urllib.request.urlopen(request,timeout=30) as r:
                       actual=json.load(r)
                   assert actual==expected,'Release does not match'
-                  for name in ['index.html','app.js','sw.js','equipment-photos.js','equipment-units.js','photo-backup.js','reservation-parties.js','crew-board.js','crew-model.js','signup-model.js','search-input.js','loan-groups.js','maintenance-model.js','bulk-loan-model.js','equipment-search.js','android-back.js','brand-banner.svg','manifest.webmanifest']:
+                  for name in ['index.html','app.js','sw.js','equipment-photos.js','equipment-units.js','availability-model.js','photo-backup.js','reservation-parties.js','crew-board.js','crew-model.js','signup-model.js','search-input.js','loan-groups.js','maintenance-model.js','bulk-loan-model.js','equipment-search.js','android-back.js','brand-banner.svg','manifest.webmanifest']:
                       request=urllib.request.Request(base+'/'+name,headers={'Cache-Control':'no-cache'})
                       with urllib.request.urlopen(request,timeout=30) as r:
                           data=r.read()

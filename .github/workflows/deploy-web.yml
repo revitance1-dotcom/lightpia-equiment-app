@@ -179,7 +179,9 @@ jobs:
               await page.evaluate(()=>{document.getElementById('app').classList.remove('hidden');document.getElementById('loginGate').classList.add('hidden');});
               await page.locator('[data-tab="settings"]').click();
               await page.locator('#userGuide>summary').click();
-              if(await page.locator('.guide-topic').count()!==14)throw Error('Manual topics missing');
+              if(await page.locator('.guide-topic').count()!==15)throw Error('Manual topics missing');
+              if(!(await page.locator('#guide-calendar').textContent()).includes('기간 적용만으로는'))throw Error('Calendar period instructions missing');
+              if(!(await page.locator('#guide-admin-people').textContent()).includes('편집 권한 회수'))throw Error('Permission guide missing');
               if(!await page.locator('.guide-version').isVisible())throw Error('Manual version missing');
               for(const width of [320,393,1280]){
                 await page.setViewportSize({width,height:900});
@@ -192,7 +194,7 @@ jobs:
               if(!await page.locator('#exportPhotoBackupBtn').count())throw Error('Photo backup controls missing');
               const liveRelease=await (await page.request.get('https://light-4e07d.web.app/release.json')).json();
               if(liveRelease.version!==process.env.RELEASE_VERSION)throw Error('Live browser release mismatch');
-              console.log('PASS live manual: 14 sections visible under Settings, current roles/photos/recruitment/backup instructions, 320/393/1280 widths without overflow');
+              console.log('PASS live manual: 15 sections visible under Settings, current roles/photos/recruitment/backup instructions, 320/393/1280 widths without overflow');
               if(errors.length)throw Error(errors.join('\n'));
               console.log('PASS live browser: Firebase initialized, login ready, current modules loaded, recruitment tab present, no uncaught errors');
             } finally { await browser.close(); }

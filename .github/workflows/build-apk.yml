@@ -75,7 +75,7 @@ jobs:
           NODE_PATH: /tmp/lightpia-admin-tests/node_modules
         run: |
           npm install --prefix /tmp/lightpia-admin-tests --no-save --no-package-lock firebase-tools@13.35.1 @firebase/rules-unit-testing@3.0.4 firebase@10.14.1 firebase-admin@13.0.0
-          /tmp/lightpia-admin-tests/node_modules/.bin/firebase emulators:exec --only firestore,auth --project demo-lightpia --config firebase.test.json "node review/bulk-loan.cjs && node review/run-admin-tests.cjs"
+          /tmp/lightpia-admin-tests/node_modules/.bin/firebase emulators:exec --only firestore,auth --project demo-lightpia --config firebase.test.json "node review/equipment-editors-rules.cjs && node review/bulk-loan.cjs && node review/run-admin-tests.cjs"
 
       - name: Cache layout browser
         uses: actions/cache@v4

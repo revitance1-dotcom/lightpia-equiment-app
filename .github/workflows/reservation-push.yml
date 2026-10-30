@@ -25,7 +25,7 @@ jobs:
       - name: Extract server workers
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_56_release_guide.zip -d /tmp/lightpia-service
+          unzip -q LIGHTPIA_v9_6_57_notifications.zip -d /tmp/lightpia-service
           mkdir -p push_sender
           cp -r /tmp/lightpia-service/lightpia_updated/push_sender/. push_sender/
       - name: Install sender dependencies
@@ -40,10 +40,5 @@ jobs:
         working-directory: push_sender
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LIGHT_4E07D }}
-        run: node send.mjs
+        run: node send-notifications.mjs
 
-      - name: Remind administrator of overdue unshipped reservations
-        working-directory: push_sender
-        env:
-          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LIGHT_4E07D }}
-        run: node send-overdue.mjs

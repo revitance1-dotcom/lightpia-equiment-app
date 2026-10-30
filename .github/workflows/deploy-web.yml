@@ -55,6 +55,7 @@ jobs:
           set -euo pipefail
           for file in www/*.js; do node --check "$file"; done
           cd /tmp/lightpia-web/lightpia_updated
+          node review/notifications.cjs
           node review/check.cjs
           node review/korean-holidays.cjs
           node review/equipment-schedule.cjs
@@ -89,6 +90,7 @@ jobs:
           NODE_PATH: /tmp/lightpia-web-browser/node_modules
         run: |
           node review/maintenance-ui.cjs
+          node review/notifications-ui.cjs
           node review/equipment-editors-ui.cjs
           node review/equipment-schedule-ui.cjs
           node review/display-order-ui.cjs
@@ -125,6 +127,7 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LIGHT_4E07D }}
         run: |
           node release-admin-rules.mjs
+          node prepare-notifications.mjs
           node bootstrap-availability.mjs
       - name: Deploy to Firebase Hosting live
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -146,7 +149,7 @@ jobs:
                   with urllib.request.urlopen(request,timeout=30) as r:
                       actual=json.load(r)
                   assert actual==expected,'Release does not match'
-                  for name in ['index.html','app.js','sw.js','equipment-photos.js','equipment-units.js','availability-model.js','reservation-fulfillment.js','display-order.js','equipment-schedule.js','schedule-date-picker.js','equipment-schedule-model.js','korean-holidays.js','korean-lunar-dates.js','photo-backup.js','reservation-parties.js','crew-board.js','crew-model.js','signup-model.js','search-input.js','loan-groups.js','maintenance-model.js','bulk-loan-model.js','equipment-search.js','android-back.js','brand-banner.svg','manifest.webmanifest']:
+                  for name in ['index.html','app.js','sw.js','notifications.js','notification-model.js','equipment-photos.js','equipment-units.js','availability-model.js','reservation-fulfillment.js','display-order.js','equipment-schedule.js','schedule-date-picker.js','equipment-schedule-model.js','korean-holidays.js','korean-lunar-dates.js','photo-backup.js','reservation-parties.js','crew-board.js','crew-model.js','signup-model.js','search-input.js','loan-groups.js','maintenance-model.js','bulk-loan-model.js','equipment-search.js','android-back.js','brand-banner.svg','manifest.webmanifest']:
                       request=urllib.request.Request(base+'/'+name,headers={'Cache-Control':'no-cache'})
                       with urllib.request.urlopen(request,timeout=30) as r:
                           data=r.read()

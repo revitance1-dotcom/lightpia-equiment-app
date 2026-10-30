@@ -45,7 +45,7 @@ jobs:
       - name: Extract app
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_56_release_guide.zip -d /tmp/lightpia
+          unzip -q LIGHTPIA_v9_6_57_notifications.zip -d /tmp/lightpia
           mkdir -p ./www
           cp -r /tmp/lightpia/lightpia_updated/www/. ./www/
           cp /tmp/lightpia/lightpia_updated/package.json ./package.json
@@ -57,6 +57,7 @@ jobs:
           node --input-type=module --check < www/app.js
           node --input-type=module --check < www/photo-backup.js
           node --input-type=module --check < www/reservation-parties.js
+          node review/notifications.cjs
           node review/check.cjs
           node review/korean-holidays.cjs
           node review/equipment-schedule.cjs
@@ -75,7 +76,7 @@ jobs:
           NODE_PATH: /tmp/lightpia-admin-tests/node_modules
         run: |
           npm install --prefix /tmp/lightpia-admin-tests --no-save --no-package-lock firebase-tools@13.35.1 @firebase/rules-unit-testing@3.0.4 firebase@10.14.1 firebase-admin@13.0.0
-          /tmp/lightpia-admin-tests/node_modules/.bin/firebase emulators:exec --only firestore,auth --project demo-lightpia --config firebase.test.json "node review/equipment-editors-rules.cjs && node review/bulk-loan.cjs && node review/run-admin-tests.cjs"
+          /tmp/lightpia-admin-tests/node_modules/.bin/firebase emulators:exec --only firestore,auth --project demo-lightpia --config firebase.test.json "node review/notifications-rules.cjs && node review/signup.integration.cjs && node review/equipment-editors-rules.cjs && node review/bulk-loan.cjs && node review/run-admin-tests.cjs"
 
       - name: Cache layout browser
         uses: actions/cache@v4
@@ -95,6 +96,7 @@ jobs:
         env:
           NODE_PATH: /tmp/lightpia-ui/node_modules
         run: |
+          node review/notifications-ui.cjs
           node review/equipment-editors-ui.cjs
           node review/equipment-schedule-ui.cjs
           node review/display-order-ui.cjs

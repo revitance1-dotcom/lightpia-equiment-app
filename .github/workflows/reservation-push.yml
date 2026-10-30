@@ -2,6 +2,9 @@ name: Lightpia Reservation Push
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ['Deploy Lightpia Web App (same source as APK)']
+    types: [completed]
   schedule:
     - cron: '*/5 * * * *'
 
@@ -14,6 +17,7 @@ concurrency:
 
 jobs:
   send-reservation-push:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

@@ -145,7 +145,7 @@ jobs:
                   with urllib.request.urlopen(request,timeout=30) as r:
                       actual=json.load(r)
                   assert actual==expected,'Release does not match'
-                  for name in ['index.html','app.js','sw.js','equipment-photos.js','equipment-units.js','availability-model.js','reservation-fulfillment.js','display-order.js','equipment-schedule.js','equipment-schedule-model.js','korean-holidays.js','korean-lunar-dates.js','photo-backup.js','reservation-parties.js','crew-board.js','crew-model.js','signup-model.js','search-input.js','loan-groups.js','maintenance-model.js','bulk-loan-model.js','equipment-search.js','android-back.js','brand-banner.svg','manifest.webmanifest']:
+                  for name in ['index.html','app.js','sw.js','equipment-photos.js','equipment-units.js','availability-model.js','reservation-fulfillment.js','display-order.js','equipment-schedule.js','schedule-date-picker.js','equipment-schedule-model.js','korean-holidays.js','korean-lunar-dates.js','photo-backup.js','reservation-parties.js','crew-board.js','crew-model.js','signup-model.js','search-input.js','loan-groups.js','maintenance-model.js','bulk-loan-model.js','equipment-search.js','android-back.js','brand-banner.svg','manifest.webmanifest']:
                       request=urllib.request.Request(base+'/'+name,headers={'Cache-Control':'no-cache'})
                       with urllib.request.urlopen(request,timeout=30) as r:
                           data=r.read()

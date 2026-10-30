@@ -89,6 +89,7 @@ jobs:
           NODE_PATH: /tmp/lightpia-web-browser/node_modules
         run: |
           node review/maintenance-ui.cjs
+          node review/equipment-editors-ui.cjs
           node review/equipment-schedule-ui.cjs
           node review/display-order-ui.cjs
           node review/equipment-units-ui.cjs

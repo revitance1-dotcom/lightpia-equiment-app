@@ -45,7 +45,7 @@ jobs:
       - name: Extract app
         run: |
           set -euo pipefail
-          unzip -q LIGHTPIA_v9_6_54_schedule_picker.zip -d /tmp/lightpia
+          unzip -q LIGHTPIA_v9_6_55_equipment_editors.zip -d /tmp/lightpia
           mkdir -p ./www
           cp -r /tmp/lightpia/lightpia_updated/www/. ./www/
           cp /tmp/lightpia/lightpia_updated/package.json ./package.json
@@ -95,6 +95,7 @@ jobs:
         env:
           NODE_PATH: /tmp/lightpia-ui/node_modules
         run: |
+          node review/equipment-editors-ui.cjs
           node review/equipment-schedule-ui.cjs
           node review/display-order-ui.cjs
           node review/equipment-units-ui.cjs

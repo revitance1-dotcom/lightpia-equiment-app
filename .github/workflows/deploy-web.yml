@@ -59,6 +59,7 @@ jobs:
           node review/check.cjs
           node review/korean-holidays.cjs
           node review/equipment-schedule.cjs
+          node review/team-holdings.cjs
           node review/display-order.cjs
           node review/equipment-units.cjs
           node review/period-capacity.cjs
@@ -101,6 +102,7 @@ jobs:
           node review/team-archive-ui.cjs
           node review/ime-touch-ui.cjs
           node review/loan-groups-ui.cjs
+          node review/team-holdings-ui.cjs
           node review/account-label-ui.cjs
           node review/stock-returns-ui.cjs
           node review/photo-frame-ui.cjs

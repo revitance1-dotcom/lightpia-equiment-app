@@ -35,6 +35,9 @@ jobs:
           with zipfile.ZipFile(archive) as z:
               assert all(not Path(n).is_absolute() and '..' not in Path(n).parts for n in z.namelist())
               z.extractall('/tmp/lightpia-web')
+          with zipfile.ZipFile('LIGHTPIA_v9_6_67_extension_patch.zip') as z:
+              assert all(not Path(n).is_absolute() and '..' not in Path(n).parts for n in z.namelist())
+              z.extractall('/tmp/lightpia-web')
           shutil.copytree('/tmp/lightpia-web/lightpia_updated/www','www',dirs_exist_ok=True)
           match=re.search(r'v(\d+)-(\d+)-(\d+)-',Path('www/sw.js').read_text())
           assert match, 'Release version missing'

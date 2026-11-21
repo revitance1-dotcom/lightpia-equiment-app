@@ -48,6 +48,7 @@ jobs:
           unzip -q LIGHTPIA_v9_6_66_partial_returns.zip -d /tmp/lightpia
           unzip -o -q LIGHTPIA_v9_6_67_extension_patch.zip -d /tmp/lightpia
           unzip -o -q LIGHTPIA_v9_6_68_return_history_patch.zip -d /tmp/lightpia
+          unzip -o -q LIGHTPIA_v9_6_69_reservation_items_patch.zip -d /tmp/lightpia
           mkdir -p ./www
           cp -r /tmp/lightpia/lightpia_updated/www/. ./www/
           cp /tmp/lightpia/lightpia_updated/package.json ./package.json

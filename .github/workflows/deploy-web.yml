@@ -35,7 +35,7 @@ jobs:
           with zipfile.ZipFile(archive) as z:
               assert all(not Path(n).is_absolute() and '..' not in Path(n).parts for n in z.namelist())
               z.extractall('/tmp/lightpia-web')
-          for overlay in ('LIGHTPIA_v9_6_67_extension_patch.zip', 'LIGHTPIA_v9_6_68_return_history_patch.zip', 'LIGHTPIA_v9_6_69_reservation_items_patch.zip'):
+          for overlay in ('LIGHTPIA_v9_6_67_extension_patch.zip', 'LIGHTPIA_v9_6_68_return_history_patch.zip', 'LIGHTPIA_v9_6_69_reservation_items_patch.zip', 'LIGHTPIA_v9_6_70_bulk_return_quantities_patch.zip'):
               with zipfile.ZipFile(overlay) as z:
                   assert all(not Path(n).is_absolute() and '..' not in Path(n).parts for n in z.namelist())
                   z.extractall('/tmp/lightpia-web')
